@@ -259,8 +259,10 @@ void PickerWindow::ConstructWindow()
 		this->callbacks.FillUsedItems(this->callbacks.used);
 
 		SetWidgetDisabledState(WID_PW_MODE_ALL, !this->callbacks.HasClassChoice());
+		this->GetWidget<NWidgetStacked>(WID_PW_TYPE_RAND_SEL)->SetDisplayedPlane(HasBit(this->callbacks.mode, PFM_SAVED) ? 0 : SZSP_HORIZONTAL);
 
 		this->GetWidget<NWidgetCore>(WID_PW_TYPE_ITEM)->SetToolTip(this->callbacks.GetTypeTooltip());
+		this->GetWidget<NWidgetCore>(WID_PW_TYPE_RANDOM)->SetToolTip(this->callbacks.GetRandomTooltip());
 
 		auto *matrix = this->GetWidget<NWidgetMatrix>(WID_PW_TYPE_MATRIX);
 		matrix->SetScrollbar(this->GetScrollbar(WID_PW_TYPE_SCROLL));
@@ -302,6 +304,8 @@ void PickerWindow::OnInit()
 
 	this->widget_lookup.clear();
 	this->nested_root->FillWidgetLookup(this->widget_lookup);
+
+	if(HasBit(this->callbacks.mode, PFM_SAVED)) this->SetDisabledRandomItemButton();
 }
 
 void PickerWindow::Close(int data)
@@ -367,6 +371,14 @@ DropDownList PickerWindow::BuildCollectionDropDownList()
 		i++;
 	}
 	return list;
+}
+
+void PickerWindow::SetDisabledRandomItemButton()
+{
+	if (this->GetWidget<NWidgetBase>(WID_PW_TYPE_RANDOM) == nullptr) return;
+
+	this->SetWidgetDisabledState(WID_PW_TYPE_RANDOM, this->callbacks.saved.contains(this->callbacks.sel_collection) ? !this->callbacks.IsCollectionValidForRandom(this->callbacks.saved.at(this->callbacks.sel_collection), this) : true);
+	if (this->IsWidgetDisabled(WID_PW_TYPE_RANDOM)) this->RaiseWidgetWhenLowered(WID_PW_TYPE_RANDOM);
 }
 
 void PickerWindow::DrawWidget(const Rect &r, WidgetID widget) const
@@ -450,6 +462,7 @@ void PickerWindow::DeletePickerCollectionCallback(Window *win, bool confirmed)
 		picker_window = w;
 		w->SetWidgetsDisabledState(true, WID_PW_COLEC_RENAME, WID_PW_COLEC_DELETE);
 		w->InvalidateData({PickerInvalidation::Collection, PickerInvalidation::Position});
+		if (HasBit(w->callbacks.mode, PFM_SAVED)) w->SetDisabledRandomItemButton();
 	}
 }
 
@@ -480,7 +493,9 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 				/* Enabling used or saved filters automatically enables all. */
 				SetBit(this->callbacks.mode, PFM_ALL);
 			}
+			this->GetWidget<NWidgetStacked>(WID_PW_TYPE_RAND_SEL)->SetDisplayedPlane(HasBit(this->callbacks.mode, PFM_SAVED) ? 0 : SZSP_HORIZONTAL);
 			this->InvalidateData({PickerInvalidation::Class, PickerInvalidation::Type, PickerInvalidation::Position});
+			this->ReInit();
 			SndClickBeep();
 			break;
 
@@ -506,6 +521,7 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 				if (this->callbacks.saved.find(this->callbacks.sel_collection) == this->callbacks.saved.end()) {
 					this->callbacks.saved[""].emplace(item);
 					this->InvalidateData({PickerInvalidation::Collection, PickerInvalidation::Class});
+					if (HasBit(this->callbacks.mode, PFM_SAVED)) this->SetDisabledRandomItemButton();
 					this->SetDirty();
 					break;
 				}
@@ -517,6 +533,7 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 					this->callbacks.saved.at(this->callbacks.sel_collection).erase(it);
 				}
 				this->InvalidateData({PickerInvalidation::Type, PickerInvalidation::Class});
+				if (HasBit(this->callbacks.mode, PFM_SAVED)) this->SetDisabledRandomItemButton();
 				break;
 			}
 
@@ -524,9 +541,17 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 				this->callbacks.SetSelectedClass(item.class_index);
 				this->callbacks.SetSelectedType(item.index);
 				this->InvalidateData(PickerInvalidation::Position);
+				if (HasBit(this->callbacks.mode, PFM_SAVED)) this->RaiseWidgetWhenLowered(WID_PW_TYPE_RANDOM);
 			}
 			SndClickBeep();
 			CloseWindowById(WC_SELECT_STATION, 0);
+			break;
+		}
+
+		case WID_PW_TYPE_RANDOM: {
+			this->ToggleWidgetLoweredState(widget);
+			SndClickBeep();
+			this->ReInit();
 			break;
 		}
 
@@ -606,6 +631,7 @@ void PickerWindow::OnQueryTextFinished(std::optional<std::string> str)
 		this->InvalidateData({PickerInvalidation::Type, PickerInvalidation::Class});
 	}
 	this->InvalidateData({PickerInvalidation::Collection, PickerInvalidation::Position});
+	if (HasBit(this->callbacks.mode, PFM_SAVED)) this->SetDisabledRandomItemButton();
 }
 
 void PickerWindow::OnDropdownSelect(WidgetID widget, int index, int click_result)
@@ -617,6 +643,7 @@ void PickerWindow::OnDropdownSelect(WidgetID widget, int index, int click_result
 				this->callbacks.sel_collection = *it;
 				if (this->IsWidgetLowered(WID_PW_MODE_SAVED)) this->InvalidateData({PickerInvalidation::Class, PickerInvalidation::Type, PickerInvalidation::Validate});
 				this->InvalidateData(PickerInvalidation::Position);
+				if (HasBit(this->callbacks.mode, PFM_SAVED)) this->SetDisabledRandomItemButton();
 			}
 			SetWidgetsDisabledState(this->callbacks.sel_collection == "" ? true : false, WID_PW_COLEC_RENAME, WID_PW_COLEC_DELETE);
 
@@ -997,6 +1024,9 @@ std::unique_ptr<NWidgetBase> MakePickerTypeWidgets()
 						EndContainer(),
 					EndContainer(),
 					NWidget(NWID_VSCROLLBAR, COLOUR_DARK_GREEN, WID_PW_TYPE_SCROLL),
+				EndContainer(),
+				NWidget(NWID_SELECTION, INVALID_COLOUR, WID_PW_TYPE_RAND_SEL),
+					NWidget(WWT_TEXTBTN, COLOUR_DARK_GREEN, WID_PW_TYPE_RANDOM), SetResize(1, 0), SetStringTip(STR_PICKER_RANDOM),
 				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
 					NWidget(WWT_PANEL, COLOUR_DARK_GREEN),

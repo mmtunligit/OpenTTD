@@ -1200,6 +1200,7 @@ public:
 
 	StringID GetClassTooltip() const override;
 	StringID GetTypeTooltip() const override;
+	StringID GetRandomTooltip() const override;
 	StringID GetCollectionTooltip() const override;
 
 	bool IsActive() const override
@@ -1272,6 +1273,19 @@ public:
 		}
 	}
 
+	bool IsCollectionValidForRandom(std::set<PickerItem> &items, Window *w) override
+	{
+		if (w->IsWidgetLowered(WID_BROS_STATION_X) || w->IsWidgetLowered(WID_BROS_STATION_Y)) return true;
+
+		for (const PickerItem &item : items) {
+			if (item.index == -1) continue;
+			const RoadStopSpec *spec = this->GetSpec(item.class_index, item.index);
+			if (spec == nullptr) continue;
+			if (spec->flags.Test(RoadStopSpecFlag::DriveThroughOnly)) return false;
+		}
+		return true;
+	}
+
 	void FillUsedItems(std::set<PickerItem> &items) override
 	{
 		for (const Station *st : Station::Iterate()) {
@@ -1291,10 +1305,12 @@ public:
 
 template <> StringID RoadStopPickerCallbacks<RoadStopType::Bus>::GetClassTooltip() const { return STR_PICKER_ROADSTOP_BUS_CLASS_TOOLTIP; }
 template <> StringID RoadStopPickerCallbacks<RoadStopType::Bus>::GetTypeTooltip() const { return STR_PICKER_ROADSTOP_BUS_TYPE_TOOLTIP; }
+template <> StringID RoadStopPickerCallbacks<RoadStopType::Bus>::GetRandomTooltip() const { return STR_PICKER_ROADSTOP_BUS_RANDOM_TOOLTIP; }
 template <> StringID RoadStopPickerCallbacks<RoadStopType::Bus>::GetCollectionTooltip() const { return STR_PICKER_ROADSTOP_BUS_COLLECTION_TOOLTIP; }
 
 template <> StringID RoadStopPickerCallbacks<RoadStopType::Truck>::GetClassTooltip() const { return STR_PICKER_ROADSTOP_TRUCK_CLASS_TOOLTIP; }
 template <> StringID RoadStopPickerCallbacks<RoadStopType::Truck>::GetTypeTooltip() const { return STR_PICKER_ROADSTOP_TRUCK_TYPE_TOOLTIP; }
+template <> StringID RoadStopPickerCallbacks<RoadStopType::Truck>::GetRandomTooltip() const { return STR_PICKER_ROADSTOP_TRUCK_RANDOM_TOOLTIP; }
 template <> StringID RoadStopPickerCallbacks<RoadStopType::Truck>::GetCollectionTooltip() const { return STR_PICKER_ROADSTOP_TRUCK_COLLECTION_TOOLTIP; }
 
 static RoadStopPickerCallbacks<RoadStopType::Bus> _bus_callback_instance("fav_passenger_roadstops");
@@ -1326,6 +1342,7 @@ private:
 			this->RaiseWidget(WID_BROS_STATION_NE + _roadstop_gui.orientation);
 			_roadstop_gui.orientation = DIAGDIR_END;
 			this->LowerWidget(WID_BROS_STATION_NE + _roadstop_gui.orientation);
+			this->PickerWindow::SetDisabledRandomItemButton();
 			this->SetDirty();
 			CloseWindowById(WC_SELECT_STATION, 0);
 		}
@@ -1485,6 +1502,7 @@ public:
 				this->RaiseWidget(WID_BROS_STATION_NE + _roadstop_gui.orientation);
 				_roadstop_gui.orientation = (DiagDirection)(widget - WID_BROS_STATION_NE);
 				this->LowerWidget(WID_BROS_STATION_NE + _roadstop_gui.orientation);
+				this->PickerWindow::SetDisabledRandomItemButton();
 				SndClickBeep();
 				this->SetDirty();
 				CloseWindowById(WC_SELECT_STATION, 0);
@@ -1635,6 +1653,7 @@ public:
 
 	StringID GetClassTooltip() const override { return STR_PICKER_WAYPOINT_CLASS_TOOLTIP; }
 	StringID GetTypeTooltip() const override { return STR_PICKER_WAYPOINT_TYPE_TOOLTIP; }
+	StringID GetRandomTooltip() const override { return STR_PICKER_WAYPOINT_RANDOM_TOOLTIP; }
 	StringID GetCollectionTooltip() const override { return STR_PICKER_WAYPOINT_COLLECTION_TOOLTIP; }
 
 	bool IsActive() const override

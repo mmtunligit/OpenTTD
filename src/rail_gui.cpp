@@ -978,6 +978,7 @@ public:
 
 	StringID GetClassTooltip() const override { return STR_PICKER_STATION_CLASS_TOOLTIP; }
 	StringID GetTypeTooltip() const override { return STR_PICKER_STATION_TYPE_TOOLTIP; }
+	StringID GetRandomTooltip() const override { return STR_PICKER_STATION_RANDOM_TOOLTIP; }
 	StringID GetCollectionTooltip() const override { return STR_PICKER_STATION_COLLECTION_TOOLTIP; }
 
 	bool IsActive() const override
@@ -1032,6 +1033,36 @@ public:
 		if (!DrawStationTile(x, y, _cur_railtype, _station_gui.axis, this->GetClassIndex(cls_id), id)) {
 			StationPickerDrawSprite(x, y, StationType::Rail, _cur_railtype, INVALID_ROADTYPE, 2 + _station_gui.axis);
 		}
+	}
+
+	bool IsCollectionValidForRandom(std::set<PickerItem> &items, Window *w) override
+	{
+		if (!_settings_client.gui.station_dragdrop && (!w->IsWidgetLowered(WID_BRAS_PLATFORM_LEN_1) || !w->IsWidgetLowered(WID_BRAS_PLATFORM_NUM_1))) return false;
+
+		int i = 0;
+		bool driveable;
+		for (const PickerItem &item : items) {
+			if (item.index == -1) continue;
+			const StationSpec *spec = this->GetSpec(item.class_index, item.index);
+			if (spec == nullptr) continue;
+			if (HasBit(spec->disallowed_platforms, 0) || HasBit(spec->disallowed_lengths, 0)) return false;
+
+			bool driveable_test = true;
+			for (auto &flag : spec->tileflags) {
+				if (flag.Test(StationSpec::TileFlag::Blocked)) {
+					driveable_test = false;
+					break;
+				}
+			}
+
+			if (i == 0) {
+				driveable = driveable_test;
+				i++;
+			} else {
+			if (driveable != driveable_test) return false;
+			}
+		}
+		return true;
 	}
 
 	void FillUsedItems(std::set<PickerItem> &items) override
@@ -1276,6 +1307,7 @@ public:
 
 				this->LowerWidget(_settings_client.gui.station_numtracks + WID_BRAS_PLATFORM_NUM_BEGIN);
 				this->LowerWidget(_settings_client.gui.station_platlength + WID_BRAS_PLATFORM_LEN_BEGIN);
+				this->PickerWindow::SetDisabledRandomItemButton();
 				SndClickBeep();
 				this->SetDirty();
 				CloseWindowById(WC_SELECT_STATION, 0);
@@ -1309,6 +1341,7 @@ public:
 
 				this->LowerWidget(_settings_client.gui.station_numtracks + WID_BRAS_PLATFORM_NUM_BEGIN);
 				this->LowerWidget(_settings_client.gui.station_platlength + WID_BRAS_PLATFORM_LEN_BEGIN);
+				this->PickerWindow::SetDisabledRandomItemButton();
 				SndClickBeep();
 				this->SetDirty();
 				CloseWindowById(WC_SELECT_STATION, 0);
@@ -1343,6 +1376,7 @@ public:
 
 				this->SetWidgetLoweredState(_settings_client.gui.station_numtracks + WID_BRAS_PLATFORM_NUM_BEGIN, !_settings_client.gui.station_dragdrop);
 				this->SetWidgetLoweredState(_settings_client.gui.station_platlength + WID_BRAS_PLATFORM_LEN_BEGIN, !_settings_client.gui.station_dragdrop);
+				this->PickerWindow::SetDisabledRandomItemButton();
 				SndClickBeep();
 				this->SetDirty();
 				CloseWindowById(WC_SELECT_STATION, 0);
@@ -1797,6 +1831,7 @@ public:
 
 	StringID GetClassTooltip() const override { return STR_PICKER_WAYPOINT_CLASS_TOOLTIP; }
 	StringID GetTypeTooltip() const override { return STR_PICKER_WAYPOINT_TYPE_TOOLTIP; }
+	StringID GetRandomTooltip() const override { return STR_PICKER_WAYPOINT_RANDOM_TOOLTIP; }
 	StringID GetCollectionTooltip() const override { return STR_PICKER_WAYPOINT_COLLECTION_TOOLTIP; }
 
 	bool IsActive() const override

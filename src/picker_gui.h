@@ -64,6 +64,8 @@ public:
 	/* Type callbacks */
 	/** Get the tooltip string for the type grid. */
 	virtual StringID GetTypeTooltip() const = 0;
+	/** Get the tooltip for the random item button */
+	virtual StringID GetRandomTooltip() const = 0;
 	/** Get the number of types in a class. @note Used only to estimate space requirements. */
 	virtual int GetTypeCount(int cls_id) const = 0;
 	/** Get the selected type. */
@@ -84,6 +86,11 @@ public:
 	/* Collection Callbacks */
 	/** Get the tooltip string for the collection list. */
 	virtual StringID GetCollectionTooltip() const = 0;
+	/** Does the collection consist of only 1x1 tiles? */
+	virtual bool IsCollectionValidForRandom([[maybe_unused]]std::set<PickerItem> &items, [[maybe_unused]]Window *w)
+	{
+		return true;
+	}
 
 	/** Fill a set with all items that are used by the current player. */
 	virtual void FillUsedItems(std::set<PickerItem> &items) = 0;
@@ -238,6 +245,7 @@ public:
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, const Dimension &padding, Dimension &fill, Dimension &resize) override;
 	std::string GetWidgetString(WidgetID widget, StringID stringid) const override;
 	DropDownList BuildCollectionDropDownList();
+	void SetDisabledRandomItemButton();
 	void DrawWidget(const Rect &r, WidgetID widget) const override;
 	void OnDropdownSelect(WidgetID widget, int index, int click_result) override;
 	void OnResize() override;

@@ -50,6 +50,7 @@ public:
 
 	StringID GetClassTooltip() const override { return STR_PICKER_OBJECT_CLASS_TOOLTIP; }
 	StringID GetTypeTooltip() const override { return STR_PICKER_OBJECT_TYPE_TOOLTIP; }
+	StringID GetRandomTooltip() const override { return STR_PICKER_OBJECT_RANDOM_TOOLTIP; }
 	StringID GetCollectionTooltip() const override { return STR_PICKER_OBJECT_COLLECTION_TOOLTIP; }
 
 	bool IsActive() const override
@@ -104,6 +105,26 @@ public:
 		} else {
 			DrawNewObjectTileInGUI(x, y, spec, std::min<int>(_object_gui.sel_view, spec->views - 1));
 		}
+	}
+
+	bool IsCollectionValidForRandom(std::set<PickerItem> &items, [[maybe_unused]]Window *w) override
+	{
+		int i = 0;
+		bool water;
+		for (const PickerItem &item : items) {
+			if (item.index == -1) continue;
+			const ObjectSpec *spec = this->GetSpec(item.class_index, item.index);
+			if (spec == nullptr) continue;
+			if (spec->size != OBJECT_SIZE_1X1 || (_game_mode == GM_NORMAL) == (spec->flags.Test(_game_mode != GM_NORMAL ? ObjectFlag::OnlyInGame : ObjectFlag::OnlyInScenedit))) return false;
+
+			if (i == 0) {
+				water = spec->flags.Test(ObjectFlag::NotOnLand);
+				i++;
+			} else {
+				if (water != spec->flags.Test(ObjectFlag::NotOnLand)) return false;
+			}
+		}
+		return true;
 	}
 
 	void FillUsedItems(std::set<PickerItem> &items) override
