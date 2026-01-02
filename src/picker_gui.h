@@ -86,6 +86,8 @@ public:
 	/* Collection Callbacks */
 	/** Get the tooltip string for the collection list. */
 	virtual StringID GetCollectionTooltip() const = 0;
+	/** Set the selected collection. */
+	virtual void SetSelectedCollection(std::set<PickerItem>) const = 0;
 	/** Does the collection consist of only 1x1 tiles? */
 	virtual bool IsCollectionValidForRandom([[maybe_unused]]std::set<PickerItem> &items, [[maybe_unused]]Window *w)
 	{
@@ -131,6 +133,7 @@ public:
 
 	const std::string ini_group; ///< Ini Group for saving favourites.
 	uint8_t mode = 0; ///< Bitmask of \c PickerFilterModes.
+	bool place_collection = false;       ///< Are we placing a collection?
 	bool rename_collection = false;      ///< Are we renaming a collection?
 	std::string sel_collection;          ///< Currently selected collection of saved items.
 	std::string edit_collection;         ///< Collection to rename or delete.

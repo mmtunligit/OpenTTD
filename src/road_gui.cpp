@@ -70,6 +70,7 @@ static DiagDirection _road_depot_orientation;
 struct RoadWaypointPickerSelection {
 	RoadStopClassID sel_class; ///< Selected road waypoint class.
 	uint16_t sel_type; ///< Selected road waypoint type within the class.
+	std::vector<std::pair<RoadStopClassID, uint16_t>> sel_collection; ///< Selected road waypoint class.
 };
 static RoadWaypointPickerSelection _waypoint_gui; ///< Settings of the road waypoint picker.
 
@@ -77,6 +78,7 @@ struct RoadStopPickerSelection {
 	RoadStopClassID sel_class; ///< Selected road stop class.
 	uint16_t sel_type; ///< Selected road stop type within the class.
 	DiagDirection orientation; ///< Selected orientation of the road stop.
+	std::vector<std::pair<RoadStopClassID, uint16_t>> sel_collection; ///< Selected road waypoint class.
 };
 static RoadStopPickerSelection _roadstop_gui;
 
@@ -1273,6 +1275,15 @@ public:
 		}
 	}
 
+	void SetSelectedCollection(std::set<PickerItem> items) const override
+	{
+		_roadstop_gui.sel_collection.clear();
+		_roadstop_gui.sel_collection.reserve(items.size());
+		for (const PickerItem &item : items) {
+			_roadstop_gui.sel_collection.emplace_back(this->GetClassIndex(item.class_index), item.index);
+		}
+	}
+
 	bool IsCollectionValidForRandom(std::set<PickerItem> &items, Window *w) override
 	{
 		if (w->IsWidgetLowered(WID_BROS_STATION_X) || w->IsWidgetLowered(WID_BROS_STATION_Y)) return true;
@@ -1702,6 +1713,15 @@ public:
 	bool IsTypeAvailable(int cls_id, int id) const override
 	{
 		return IsRoadStopAvailable(this->GetSpec(cls_id, id), StationType::RoadWaypoint);
+	}
+
+	void SetSelectedCollection(std::set<PickerItem> items) const override
+	{
+		_waypoint_gui.sel_collection.clear();
+		_waypoint_gui.sel_collection.reserve(items.size());
+		for (const PickerItem &item : items) {
+			_waypoint_gui.sel_collection.emplace_back(this->GetClassIndex(item.class_index), item.index);
+		}
 	}
 
 	void DrawType(int x, int y, int cls_id, int id) const override

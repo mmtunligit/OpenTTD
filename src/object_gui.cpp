@@ -39,6 +39,7 @@ struct ObjectPickerSelection {
 	ObjectClassID sel_class; ///< Selected object class.
 	uint16_t sel_type; ///< Selected object type within the class.
 	uint8_t sel_view; ///< Selected view of the object.
+	std::vector<std::pair<ObjectClassID, uint16_t>> sel_collection; ///< Selected object collection.
 };
 static ObjectPickerSelection _object_gui; ///< Settings of the object picker.
 
@@ -104,6 +105,15 @@ public:
 			DrawOrigTileSeqInGUI(x, y, dts, PAL_NONE);
 		} else {
 			DrawNewObjectTileInGUI(x, y, spec, std::min<int>(_object_gui.sel_view, spec->views - 1));
+		}
+	}
+
+	void SetSelectedCollection(std::set<PickerItem> items) const override
+	{
+		_object_gui.sel_collection.clear();
+		_object_gui.sel_collection.reserve(items.size());
+		for (const PickerItem &item : items) {
+			_object_gui.sel_collection.emplace_back(this->GetClassIndex(item.class_index), item.index);
 		}
 	}
 

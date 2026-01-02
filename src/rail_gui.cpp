@@ -63,6 +63,7 @@ static SignalType _cur_signal_type;          ///< set the signal type (for signa
 struct WaypointPickerSelection {
 	StationClassID sel_class; ///< Selected station class.
 	uint16_t sel_type; ///< Selected station type within the class.
+	std::vector<std::pair<StationClassID, uint16_t>> sel_collection; ///< Selected station collection.
 };
 static WaypointPickerSelection _waypoint_gui; ///< Settings of the waypoint picker.
 
@@ -70,6 +71,7 @@ struct StationPickerSelection {
 	StationClassID sel_class; ///< Selected station class.
 	uint16_t sel_type; ///< Selected station type within the class.
 	Axis axis; ///< Selected orientation of the station.
+	std::vector<std::pair<StationClassID, uint16_t>> sel_collection; ///< Selected station collection.
 };
 static StationPickerSelection _station_gui; ///< Settings of the station picker.
 
@@ -1035,6 +1037,15 @@ public:
 		}
 	}
 
+	void SetSelectedCollection(std::set<PickerItem> items) const override
+	{
+		_station_gui.sel_collection.clear();
+		_station_gui.sel_collection.reserve(items.size());
+		for (const PickerItem &item : items) {
+			_station_gui.sel_collection.emplace_back(this->GetClassIndex(item.class_index), item.index);
+		}
+	}
+
 	bool IsCollectionValidForRandom(std::set<PickerItem> &items, Window *w) override
 	{
 		if (!_settings_client.gui.station_dragdrop && (!w->IsWidgetLowered(WID_BRAS_PLATFORM_LEN_1) || !w->IsWidgetLowered(WID_BRAS_PLATFORM_NUM_1))) return false;
@@ -1885,6 +1896,15 @@ public:
 	void DrawType(int x, int y, int cls_id, int id) const override
 	{
 		DrawWaypointSprite(x, y, this->GetClassIndex(cls_id), id, _cur_railtype);
+	}
+
+	void SetSelectedCollection(std::set<PickerItem> items) const override
+	{
+		_waypoint_gui.sel_collection.clear();
+		_waypoint_gui.sel_collection.reserve(items.size());
+		for (const PickerItem &item : items) {
+			_waypoint_gui.sel_collection.emplace_back(this->GetClassIndex(item.class_index), item.index);
+		}
 	}
 
 	void FillUsedItems(std::set<PickerItem> &items) override
