@@ -175,7 +175,7 @@ bool GetIfClassHasNewStopsByType(const RoadStopClass *roadstopclass, RoadStopTyp
 bool GetIfStopIsForType(const RoadStopSpec *roadstopspec, RoadStopType rs, RoadType roadtype);
 
 const RoadStopSpec *GetRoadStopSpec(TileIndex t);
-std::optional<uint8_t> AllocateSpecToRoadStop(const RoadStopSpec *spec, BaseStation *st);
+std::vector<std::optional<uint8_t>> AllocateSpecToRoadStop(std::vector<const RoadStopSpec *> specs, BaseStation *st);
 void AssignSpecToRoadStop(const RoadStopSpec *spec, BaseStation *st, uint8_t specindex);
 void DeallocateSpecFromRoadStop(BaseStation *st, uint8_t specindex);
 void RoadStopUpdateCachedTriggers(BaseStation *st);

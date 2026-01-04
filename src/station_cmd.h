@@ -11,9 +11,11 @@
 #define STATION_CMD_H
 
 #include "command_type.h"
+#include "command_func.h"
 #include "rail_type.h"
 #include "road_type.h"
 #include "station_type.h"
+
 
 struct Town;
 
@@ -27,7 +29,7 @@ CommandCost CmdBuildAirport(DoCommandFlags flags, TileIndex tile, uint8_t airpor
 CommandCost CmdBuildDock(DoCommandFlags flags, TileIndex tile, StationID station_to_join, bool adjacent);
 CommandCost CmdBuildRailStation(DoCommandFlags flags, TileIndex tile_org, RailType rt, Axis axis, uint8_t numtracks, uint8_t plat_len, StationClassID spec_class, uint16_t spec_index, StationID station_to_join, bool adjacent);
 CommandCost CmdRemoveFromRailStation(DoCommandFlags flags, TileIndex start, TileIndex end, bool keep_rail);
-CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width, uint8_t length, RoadStopType stop_type, bool is_drive_through, DiagDirection ddir, RoadType rt, RoadStopClassID spec_class, uint16_t spec_index, StationID station_to_join, bool adjacent);
+CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width, uint8_t length, RoadStopType stop_type, bool is_drive_through, DiagDirection ddir, RoadType rt, std::vector<RoadStopClassID> spec_classes, std::vector<uint16_t> spec_indicies, StationID station_to_join, bool adjacent);
 CommandCost CmdRemoveRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width, uint8_t height, RoadStopType stop_type, bool remove_road);
 CommandCost CmdRenameStation(DoCommandFlags flags, StationID station_id, const std::string &text);
 std::tuple<CommandCost, StationID> CmdMoveStationName(DoCommandFlags flags, StationID station_id, TileIndex tile);
@@ -44,5 +46,53 @@ DEF_CMD_TRAIT(CMD_MOVE_STATION_NAME,        CmdMoveStationName,       {},       
 DEF_CMD_TRAIT(CMD_OPEN_CLOSE_AIRPORT,       CmdOpenCloseAirport,      {},                       CommandType::RouteManagement)
 
 void CcMoveStationName(Commands cmd, const CommandCost &result, StationID station_id);
+
+template <typename Tcont, typename Titer>
+inline EndianBufferWriter<Tcont, Titer> &operator <<(EndianBufferWriter<Tcont, Titer> &buffer, const std::vector<RoadStopClassID> &classes)
+{
+	int size = classes.size();
+	buffer << size;
+	for (const RoadStopClassID &cls : classes) {
+		buffer << cls;
+	}
+	return buffer;
+}
+
+inline EndianBufferReader &operator >>(EndianBufferReader &buffer, std::vector<RoadStopClassID> &classes)
+{
+	int size;
+	buffer >> size;
+	classes.reserve(size);
+	RoadStopClassID cls;
+	for (int i = 0; i != size; i++) {
+		buffer >> cls;
+		classes.emplace_back(cls);
+	}
+	return buffer;
+}
+
+template <typename Tcont, typename Titer>
+inline EndianBufferWriter<Tcont, Titer> &operator <<(EndianBufferWriter<Tcont, Titer> &buffer, const std::vector<uint16_t> &ids)
+{
+	int size = ids.size();
+	buffer << size;
+	for (const uint16_t &id : ids) {
+		buffer << id;
+	}
+	return buffer;
+}
+
+inline EndianBufferReader &operator >>(EndianBufferReader &buffer, std::vector<uint16_t> &ids)
+{
+	int size;
+	buffer >> size;
+	ids.reserve(size);
+	RoadStopClassID id;
+	for (int i = 0; i != size; i++) {
+		buffer >> id;
+		ids.emplace_back(id);
+	}
+	return buffer;
+}
 
 #endif /* STATION_CMD_H */

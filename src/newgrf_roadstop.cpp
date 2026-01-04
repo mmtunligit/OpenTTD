@@ -560,36 +560,73 @@ const RoadStopSpec *GetRoadStopSpec(TileIndex t)
 }
 
 /**
- * Allocate a RoadStopSpec to a Station. This is called once per build operation.
- * @param spec RoadStopSpec to allocate.
+ * Allocate RoadStopSpecs to a Station. This is called once per build operation.
+ * @param specs RoadStopSpecs to allocate.
  * @param st Station to allocate it to.
  * @return Index within the Station's road stop spec list, or std::nullopt if the allocation failed.
  */
-std::optional<uint8_t> AllocateSpecToRoadStop(const RoadStopSpec *spec, BaseStation *st)
+std::vector<std::optional<uint8_t>> AllocateSpecToRoadStop(std::vector<const RoadStopSpec *> specs, BaseStation *st)
 {
 	uint i;
+	std::map<int, const RoadStopSpec *> temp_ids;
+	std::vector<std::optional<uint8_t>> ids;
+	ids.reserve(specs.size());
 
-	if (spec == nullptr) return 0;
+	for (const RoadStopSpec *& spec : specs)  {
+		if (spec == nullptr) {
+			ids.emplace_back(0);
+			continue;
+		}
 
-	/* If station doesn't exist yet then the first slot is available. */
-	if (st == nullptr) return 1;
+		/* If station doesn't exist yet then check the temp list to see what is available. */
+		if (st == nullptr) {
+			for (i = 1; i < NUM_ROADSTOPSPECS_PER_STATION; i++) {
+				if (!temp_ids.contains(i)) {
+					ids.emplace_back(i);
+					temp_ids.emplace(i, spec);
+					break;
+				}
+				if (temp_ids.at(i) == spec) {
+					ids.emplace_back(i);
+					break;
+				}
+			}
+			continue;
+		}
 
-	/* Try to find the same spec and return that one */
-	for (i = 1; i < st->roadstop_speclist.size() && i < NUM_ROADSTOPSPECS_PER_STATION; i++) {
-		if (st->roadstop_speclist[i].spec == spec) return i;
+		bool found = false;
+		/* Try to find the same spec and return that one. */
+		for (i = 1; i < st->roadstop_speclist.size() && i < NUM_ROADSTOPSPECS_PER_STATION; i++) {
+			if (st->roadstop_speclist[i].spec == spec) {
+				ids.emplace_back(i);
+				temp_ids.emplace(i, spec);
+				found = true;
+				break;
+			}
+			/* Check the temp list. */
+			if (temp_ids.contains(i) && temp_ids.at(i) == spec) {
+				ids.emplace_back(i);
+				found = true;
+				break;
+			}
+		}
+		if (found) continue;
+
+		/* Try to find an unused spec slot */
+		for (i = 1; i < st->roadstop_speclist.size() && i < NUM_ROADSTOPSPECS_PER_STATION; i++) {
+			if (st->roadstop_speclist[i].spec == nullptr && st->roadstop_speclist[i].grfid == 0) break;
+		}
+
+		if (i == NUM_ROADSTOPSPECS_PER_STATION) {
+			/* Full, give up */
+			ids.emplace_back(std::nullopt);
+			return ids;
+		}
+
+		ids.emplace_back(i);
+		temp_ids.emplace(i, spec);
 	}
-
-	/* Try to find an unused spec slot */
-	for (i = 1; i < st->roadstop_speclist.size() && i < NUM_ROADSTOPSPECS_PER_STATION; i++) {
-		if (st->roadstop_speclist[i].spec == nullptr && st->roadstop_speclist[i].grfid == 0) break;
-	}
-
-	if (i == NUM_ROADSTOPSPECS_PER_STATION) {
-		/* Full, give up */
-		return std::nullopt;
-	}
-
-	return i;
+	return ids;
 }
 
 /**

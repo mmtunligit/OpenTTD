@@ -2015,15 +2015,15 @@ static CommandCost FindJoiningRoadStop(StationID existing_stop, StationID statio
  * @param flags Operation to perform.
  * @param is_drive_through True if trying to build a drive-through station.
  * @param station_type Station type (bus, truck or road waypoint).
- * @param roadstopspec Spec of road stop being built.
+ * @param roadstopspecs Spec of road stop being built.
  * @param axis Axis of a drive-through road stop.
  * @param ddir Entrance direction (#DiagDirection) for normal stops. Converted to the axis for drive-through stops.
  * @param station StationID to be queried and returned if available.
  * @param rt Road type to build, may be INVALID_ROADTYPE if an existing road is required.
- * @param unit_cost The cost to build one road stop of the current type.
+ * @param unit_costs The cost to build one road stop of the current type.
  * @return The cost in case of success, or an error code if it failed.
  */
-CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool is_drive_through, StationType station_type, const RoadStopSpec *roadstopspec, Axis axis, DiagDirection ddir, StationID *est, RoadType rt, Money unit_cost)
+CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool is_drive_through, StationType station_type, std::vector<const RoadStopSpec *> roadstopspecs, Axis axis, DiagDirection ddir, StationID *est, RoadType rt, std::vector<Money> unit_costs)
 {
 	DiagDirections invalid_dirs{};
 	if (is_drive_through) {
@@ -2036,8 +2036,9 @@ CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool
 	/* Check every tile in the area. */
 	int allowed_z = -1;
 	CommandCost cost(EXPENSES_CONSTRUCTION);
+	int i = 0;
 	for (TileIndex cur_tile : tile_area) {
-		CommandCost ret = CheckFlatLandRoadStop(cur_tile, allowed_z, roadstopspec, flags, invalid_dirs, is_drive_through, station_type, axis, est, rt);
+		CommandCost ret = CheckFlatLandRoadStop(cur_tile, allowed_z, roadstopspecs.at(i), flags, invalid_dirs, is_drive_through, station_type, axis, est, rt);
 		if (ret.Failed()) return ret;
 
 		bool is_preexisting_roadstop = IsTileType(cur_tile, MP_STATION) && IsAnyRoadStop(cur_tile);
@@ -2045,8 +2046,9 @@ CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool
 		/* Only add costs if a stop doesn't already exist in the location */
 		if (!is_preexisting_roadstop) {
 			cost.AddCost(ret.GetCost());
-			cost.AddCost(unit_cost);
+			cost.AddCost(unit_costs.at(i));
 		}
+		i++;
 	}
 
 	return cost;
@@ -2062,32 +2064,34 @@ CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool
  * @param is_drive_through False for normal stops, true for drive-through.
  * @param ddir Entrance direction (#DiagDirection) for normal stops. Converted to the axis for drive-through stops.
  * @param rt The roadtype.
- * @param spec_class Road stop spec class.
- * @param spec_index Road stop spec index.
+ * @param spec_classes Road stop spec classes.
+ * @param spec_indicies Road stop spec indicies.
  * @param station_to_join Station ID to join (NEW_STATION if build new one).
  * @param adjacent Allow stations directly adjacent to other stations.
  * @return The cost of this operation or an error.
  */
 CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width, uint8_t length, RoadStopType stop_type, bool is_drive_through,
-		DiagDirection ddir, RoadType rt, RoadStopClassID spec_class, uint16_t spec_index, StationID station_to_join, bool adjacent)
+		DiagDirection ddir, RoadType rt, std::vector<RoadStopClassID> spec_classes, std::vector<uint16_t> spec_indicies, StationID station_to_join, bool adjacent)
 {
 	if (!ValParamRoadType(rt) || !IsValidDiagDirection(ddir) || stop_type >= RoadStopType::End) return CMD_ERROR;
 	bool reuse = (station_to_join != NEW_STATION);
 	if (!reuse) station_to_join = StationID::Invalid();
 	bool distant_join = (station_to_join != StationID::Invalid());
+	if (spec_classes.size() != spec_indicies.size()) return CMD_ERROR;
 
 	/* Check if the given station class is valid */
-	if (static_cast<uint>(spec_class) >= RoadStopClass::GetClassCount()) return CMD_ERROR;
-	const RoadStopClass *cls = RoadStopClass::Get(spec_class);
-	if (IsWaypointClass(*cls)) return CMD_ERROR;
-	if (spec_index >= cls->GetSpecCount()) return CMD_ERROR;
-
-	const RoadStopSpec *roadstopspec = cls->GetSpec(spec_index);
-	if (roadstopspec != nullptr) {
-		if (stop_type == RoadStopType::Truck && roadstopspec->stop_type != ROADSTOPTYPE_FREIGHT && roadstopspec->stop_type != ROADSTOPTYPE_ALL) return CMD_ERROR;
-		if (stop_type == RoadStopType::Bus && roadstopspec->stop_type != ROADSTOPTYPE_PASSENGER && roadstopspec->stop_type != ROADSTOPTYPE_ALL) return CMD_ERROR;
-		if (!is_drive_through && roadstopspec->flags.Test(RoadStopSpecFlag::DriveThroughOnly)) return CMD_ERROR;
+	if (std::any_of(spec_classes.begin(), spec_classes.end(), [](RoadStopClassID cls) { return static_cast<uint>(cls) >= RoadStopClass::GetClassCount(); })) return CMD_ERROR;
+	std::vector<const RoadStopClass *> classes;
+	classes.reserve(spec_classes.size());
+	for (const RoadStopClassID &spec_class : spec_classes) {
+		classes.emplace_back(RoadStopClass::Get(spec_class));
+		if (IsWaypointClass(*classes.back())) return CMD_ERROR;
 	}
+	for (int i = 0; i != static_cast<int>(spec_indicies.size()); i++) {
+		if (spec_indicies.at(i) >= classes.at(i)->GetSpecCount()) return CMD_ERROR;
+	}
+
+
 
 	/* Check if the requested road stop is too big */
 	if (width > _settings_game.station.station_spread || length > _settings_game.station.station_spread) return CommandCost(STR_ERROR_STATION_TOO_SPREAD_OUT);
@@ -2097,6 +2101,7 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 	if (!IsValidTile(tile) || TileAddWrap(tile, width - 1, length - 1) == INVALID_TILE) return CMD_ERROR;
 
 	TileArea roadstop_area(tile, width, length);
+	uint8_t count = width * length;
 
 	if (distant_join && (!_settings_game.station.distant_join_stations || !Station::IsValidID(station_to_join))) return CMD_ERROR;
 
@@ -2110,15 +2115,40 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 
 	bool is_truck_stop = stop_type != RoadStopType::Bus;
 
+	std::vector<const RoadStopSpec *> roadstopspecs;
+	roadstopspecs.reserve(count);
 	/* Total road stop cost. */
-	Money unit_cost;
-	if (roadstopspec != nullptr) {
-		unit_cost = roadstopspec->GetBuildCost(is_truck_stop ? Price::BuildStationTruck : Price::BuildStationBus);
-	} else {
-		unit_cost = _price[is_truck_stop ? Price::BuildStationTruck : Price::BuildStationBus];
+	std::vector<Money> unit_costs;
+	unit_costs.reserve(count);
+	for (int i = 0; i != count; i++) {
+		/* Put a 1 in MSB to ensure random number is always larger than the collection size. */
+		uint32_t rand = ((random() | (1 << 31)) % spec_indicies.size());
+		roadstopspecs.emplace_back(RoadStopClass::Get(spec_classes.at(rand))->GetSpec(spec_indicies.at(rand)));
+
+		if (roadstopspecs.back() != nullptr) {
+			unit_costs.emplace_back(roadstopspecs.back()->GetBuildCost(is_truck_stop ? Price::BuildStationTruck : Price::BuildStationBus));
+		} else {
+			unit_costs.emplace_back(_price[is_truck_stop ? Price::BuildStationTruck : Price::BuildStationBus]);
+		}
 	}
+
+	for (const RoadStopSpec *& roadstopspec : roadstopspecs) {
+		if (roadstopspec != nullptr) {
+			if (stop_type == RoadStopType::Truck && roadstopspec->stop_type != ROADSTOPTYPE_FREIGHT && roadstopspec->stop_type != ROADSTOPTYPE_ALL) return CMD_ERROR;
+			if (stop_type == RoadStopType::Bus && roadstopspec->stop_type != ROADSTOPTYPE_PASSENGER && roadstopspec->stop_type != ROADSTOPTYPE_ALL) return CMD_ERROR;
+			if (!is_drive_through && roadstopspec->flags.Test(RoadStopSpecFlag::DriveThroughOnly)) return CMD_ERROR;
+			/* Perform NewGRF checks */
+
+			/* Check if the road stop is buildable */
+			if (roadstopspec->callback_mask.Test(RoadStopCallbackMask::Avail)) {
+				uint16_t cb_res = GetRoadStopCallback(CBID_STATION_AVAILABILITY, 0, 0, roadstopspec, nullptr, INVALID_TILE, rt, is_truck_stop ? StationType::Truck : StationType::Bus, 0);
+				if (cb_res != CALLBACK_FAILED && !Convert8bitBooleanCallback(roadstopspec->grf_prop.grffile, CBID_STATION_AVAILABILITY, cb_res)) return CMD_ERROR;
+			}
+		}
+	}
+
 	StationID est = StationID::Invalid();
-	CommandCost cost = CalculateRoadStopCost(roadstop_area, flags, is_drive_through, is_truck_stop ? StationType::Truck : StationType::Bus, roadstopspec, axis, ddir, &est, rt, unit_cost);
+	CommandCost cost = CalculateRoadStopCost(roadstop_area, flags, is_drive_through, is_truck_stop ? StationType::Truck : StationType::Bus, roadstopspecs, axis, ddir, &est, rt, unit_costs);
 	if (cost.Failed()) return cost;
 
 	Station *st = nullptr;
@@ -2132,22 +2162,22 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 	if (ret.Failed()) return ret;
 
 	/* Check if we can allocate a custom stationspec to this station */
-	auto specindex = AllocateSpecToRoadStop(roadstopspec, st);
-	if (!specindex.has_value()) return CommandCost(STR_ERROR_TOO_MANY_STATION_SPECS);
-
-	if (roadstopspec != nullptr) {
-		/* Perform NewGRF checks */
-
-		/* Check if the road stop is buildable */
-		if (roadstopspec->callback_mask.Test(RoadStopCallbackMask::Avail)) {
-			uint16_t cb_res = GetRoadStopCallback(CBID_STATION_AVAILABILITY, 0, 0, roadstopspec, nullptr, INVALID_TILE, rt, is_truck_stop ? StationType::Truck : StationType::Bus, 0);
-			if (cb_res != CALLBACK_FAILED && !Convert8bitBooleanCallback(roadstopspec->grf_prop.grffile, CBID_STATION_AVAILABILITY, cb_res)) return CMD_ERROR;
-		}
-	}
+	auto specindicies = AllocateSpecToRoadStop(roadstopspecs, st);
+	if (!specindicies.back().has_value()) return CommandCost(STR_ERROR_TOO_MANY_STATION_SPECS);
 
 	if (flags.Test(DoCommandFlag::Execute)) {
-		if (specindex.has_value()) AssignSpecToRoadStop(roadstopspec, st, *specindex);
+		for (int i = 0; i != count; i++) {
+			if (specindicies.at(i).has_value()) AssignSpecToRoadStop(roadstopspecs.at(i), st, *specindicies.at(i));
+
+			if (roadstopspecs.at(i) != nullptr) {
+				/* Include this road stop spec's animation trigger bitmask
+				 * in the station's cached copy. */
+				st->cached_roadstop_anim_triggers.Set(roadstopspecs.at(i)->animation.triggers);
+			}
+		}
+
 		/* Check every tile in the area. */
+		int i = 0;
 		for (TileIndex cur_tile : roadstop_area) {
 			/* Get existing road types and owners before any tile clearing */
 			RoadType road_rt = MayHaveRoad(cur_tile) ? GetRoadType(cur_tile, RTT_ROAD) : INVALID_ROADTYPE;
@@ -2156,13 +2186,7 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 			Owner tram_owner = tram_rt != INVALID_ROADTYPE ? GetRoadOwner(cur_tile, RTT_TRAM) : _current_company;
 
 			if (IsTileType(cur_tile, MP_STATION) && IsStationRoadStop(cur_tile)) {
-				RemoveRoadStop(cur_tile, flags, *specindex);
-			}
-
-			if (roadstopspec != nullptr) {
-				/* Include this road stop spec's animation trigger bitmask
-				 * in the station's cached copy. */
-				st->cached_roadstop_anim_triggers.Set(roadstopspec->animation.triggers);
+				RemoveRoadStop(cur_tile, flags, *specindicies.at(i));
 			}
 
 			RoadStop *road_stop = RoadStop::Create(cur_tile);
@@ -2204,13 +2228,14 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 			UpdateCompanyRoadInfrastructure(tram_rt, tram_owner, ROAD_STOP_TRACKBIT_FACTOR);
 			Company::Get(st->owner)->infrastructure.station++;
 
-			SetCustomRoadStopSpecIndex(cur_tile, *specindex);
-			if (roadstopspec != nullptr) {
+			SetCustomRoadStopSpecIndex(cur_tile, *specindicies.at(i));
+			if (roadstopspecs.at(i) != nullptr) {
 				st->SetRoadStopRandomBits(cur_tile, GB(Random(), 0, 8));
 				TriggerRoadStopAnimation(st, cur_tile, StationAnimationTrigger::Built);
 			}
 
 			MarkTileDirtyByTile(cur_tile);
+			i++;
 		}
 
 		if (st != nullptr) {

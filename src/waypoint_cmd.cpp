@@ -185,7 +185,7 @@ static CommandCost IsValidTileForWaypoint(TileIndex tile, Axis axis, StationID *
 
 extern CommandCost FindJoiningWaypoint(StationID existing_station, StationID station_to_join, bool adjacent, TileArea ta, Waypoint **wp, bool is_road);
 extern CommandCost CanExpandRailStation(const BaseStation *st, TileArea &new_ta);
-extern CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool is_drive_through, StationType station_type, const RoadStopSpec *roadstopspec, Axis axis, DiagDirection ddir, StationID *est, RoadType rt, Money unit_cost);
+extern CommandCost CalculateRoadStopCost(TileArea tile_area, DoCommandFlags flags, bool is_drive_through, StationType station_type, std::vector<const RoadStopSpec *> roadstopspecs, Axis axis, DiagDirection ddir, StationID *est, RoadType rt, std::vector<Money> unit_costs);
 extern CommandCost IsRailStationBridgeAboveOk(TileIndex tile, const StationSpec *spec, StationType type, StationGfx layout);
 extern CommandCost IsBuoyBridgeAboveOk(TileIndex tile);
 
@@ -333,22 +333,27 @@ CommandCost CmdBuildRailWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
  * @param axis orientation (Axis).
  * @param width width of waypoint.
  * @param height height of waypoint.
- * @param spec_class custom road stop class.
- * @param spec_index custom road stop id.
+ * @param spec_classes custom road stop classes.
+ * @param spec_indicies custom road stop ids.
  * @param station_to_join station ID to join (NEW_STATION if build new one).
  * @param adjacent allow waypoints directly adjacent to other waypoints.
  * @return the cost of this operation or an error.
  */
-CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axis axis, uint8_t width, uint8_t height, RoadStopClassID spec_class, uint16_t spec_index, StationID station_to_join, bool adjacent)
+CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axis axis, uint8_t width, uint8_t height, std::vector<RoadStopClassID> spec_classes, std::vector<uint16_t> spec_indicies, StationID station_to_join, bool adjacent)
 {
 	if (!IsValidAxis(axis)) return CMD_ERROR;
-	/* Check if the given station class is valid */
-	if (static_cast<uint>(spec_class) >= RoadStopClass::GetClassCount()) return CMD_ERROR;
-	const RoadStopClass *cls = RoadStopClass::Get(spec_class);
-	if (!IsWaypointClass(*cls)) return CMD_ERROR;
-	if (spec_index >= cls->GetSpecCount()) return CMD_ERROR;
-
-	const RoadStopSpec *roadstopspec = RoadStopClass::Get(spec_class)->GetSpec(spec_index);
+	if (spec_classes.size() != spec_indicies.size()) return CMD_ERROR;
+	/* Check if the given station classes are valid */
+	if (std::any_of(spec_classes.begin(), spec_classes.end(), [](RoadStopClassID cls) { return static_cast<uint>(cls) >= RoadStopClass::GetClassCount(); })) return CMD_ERROR;
+	std::vector<const RoadStopClass *> classes;
+	classes.reserve(spec_classes.size());
+	for (const RoadStopClassID &spec_class : spec_classes) {
+		classes.emplace_back(RoadStopClass::Get(spec_class));
+		if (!IsWaypointClass(*classes.back())) return CMD_ERROR;
+	}
+	for (int i = 0; i != static_cast<int>(spec_indicies.size()); i++) {
+		if (spec_indicies.at(i) >= classes.at(i)->GetSpecCount()) return CMD_ERROR;
+	}
 
 	/* The number of parts to build */
 	uint8_t count = axis == AXIS_X ? height : width;
@@ -364,15 +369,25 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 
 	TileArea roadstop_area(start_tile, width, height);
 
+	std::vector<const RoadStopSpec *> roadstopspecs;
+	roadstopspecs.reserve(count);
 	/* Total road stop cost. */
-	Money unit_cost;
-	if (roadstopspec != nullptr) {
-		unit_cost = roadstopspec->GetBuildCost(Price::BuildStationTruck);
-	} else {
-		unit_cost = _price[Price::BuildStationTruck];
+	std::vector<Money> unit_costs;
+	unit_costs.reserve(count);
+	for (int i = 0; i != count; i++) {
+		/* Put a 1 in MSB to ensure random number is always larger than the collection size. */
+		uint32_t rand = ((random() | (1 << 31)) % spec_indicies.size());
+		roadstopspecs.emplace_back(RoadStopClass::Get(spec_classes.at(rand))->GetSpec(spec_indicies.at(rand)));
+
+		if (roadstopspecs.back() != nullptr) {
+			unit_costs.emplace_back(roadstopspecs.back()->GetBuildCost(Price::BuildStationTruck));
+		} else {
+			unit_costs.emplace_back(_price[Price::BuildStationTruck]);
+		}
 	}
+
 	StationID est = StationID::Invalid();
-	CommandCost cost = CalculateRoadStopCost(roadstop_area, flags, true, StationType::RoadWaypoint, roadstopspec, axis, AxisToDiagDir(axis), &est, INVALID_ROADTYPE, unit_cost);
+	CommandCost cost = CalculateRoadStopCost(roadstop_area, flags, true, StationType::RoadWaypoint, roadstopspecs, axis, AxisToDiagDir(axis), &est, INVALID_ROADTYPE, unit_costs);
 	if (cost.Failed()) return cost;
 
 	Waypoint *wp = nullptr;
@@ -396,8 +411,8 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 	}
 
 	/* Check if we can allocate a custom spec to this waypoint. */
-	auto specindex = AllocateSpecToRoadStop(roadstopspec, wp);
-	if (!specindex.has_value()) return CommandCost(STR_ERROR_TOO_MANY_STATION_SPECS);
+	auto specindicies = AllocateSpecToRoadStop(roadstopspecs, wp);
+	if (!specindicies.back().has_value()) return CommandCost(STR_ERROR_TOO_MANY_STATION_SPECS);
 
 	if (flags.Test(DoCommandFlag::Execute)) {
 		if (wp == nullptr) {
@@ -410,12 +425,14 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 		wp->owner = _current_company;
 
 		wp->rect.BeforeAddRect(start_tile, width, height, StationRect::ADD_TRY);
-		if (specindex.has_value()) AssignSpecToRoadStop(roadstopspec, wp, *specindex);
+		for (int i = 0; i != count; i++) {
+			if (specindicies.at(i).has_value()) AssignSpecToRoadStop(roadstopspecs.at(i), wp, *specindicies.at(i));
 
-		if (roadstopspec != nullptr) {
-			/* Include this road stop spec's animation trigger bitmask
-			 * in the station's cached copy. */
-			wp->cached_roadstop_anim_triggers.Set(roadstopspec->animation.triggers);
+			if (roadstopspecs.at(i) != nullptr) {
+				/* Include this road stop spec's animation trigger bitmask
+				 * in the station's cached copy. */
+				wp->cached_roadstop_anim_triggers.Set(roadstopspecs.at(i)->animation.triggers);
+			}
 		}
 
 		wp->delete_ctr = 0;
@@ -428,6 +445,7 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 		wp->UpdateVirtCoord();
 
 		/* Check every tile in the area. */
+		int i = 0;
 		for (TileIndex cur_tile : roadstop_area) {
 			/* Get existing road types and owners before any tile clearing */
 			RoadType road_rt = MayHaveRoad(cur_tile) ? GetRoadType(cur_tile, RTT_ROAD) : INVALID_ROADTYPE;
@@ -436,7 +454,7 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 			Owner tram_owner = tram_rt != INVALID_ROADTYPE ? GetRoadOwner(cur_tile, RTT_TRAM) : _current_company;
 
 			if (IsRoadWaypointTile(cur_tile)) {
-				RemoveRoadWaypointStop(cur_tile, flags, *specindex);
+				RemoveRoadWaypointStop(cur_tile, flags, *specindicies.at(i));
 			}
 
 			wp->road_waypoint_area.Add(cur_tile);
@@ -454,12 +472,13 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 			UpdateCompanyRoadInfrastructure(tram_rt, tram_owner, ROAD_STOP_TRACKBIT_FACTOR);
 
 			MakeDriveThroughRoadStop(cur_tile, wp->owner, road_owner, tram_owner, wp->index, StationType::RoadWaypoint, road_rt, tram_rt, axis);
-			SetCustomRoadStopSpecIndex(cur_tile, *specindex);
-			if (roadstopspec != nullptr) wp->SetRoadStopRandomBits(cur_tile, 0);
+			SetCustomRoadStopSpecIndex(cur_tile, *specindicies.at(i));
+			if (roadstopspecs.at(i) != nullptr) wp->SetRoadStopRandomBits(cur_tile, 0);
 
 			Company::Get(wp->owner)->infrastructure.station++;
 
 			MarkTileDirtyByTile(cur_tile);
+			i++;
 		}
 		DirtyCompanyInfrastructureWindows(wp->owner);
 	}

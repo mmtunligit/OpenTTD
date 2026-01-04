@@ -379,12 +379,14 @@ void PickerWindow::SetDisabledRandomItemButton()
 	if (this->GetWidget<NWidgetBase>(WID_PW_TYPE_RANDOM) == nullptr) return;
 
 	this->SetWidgetDisabledState(WID_PW_TYPE_RANDOM, this->callbacks.saved.contains(this->callbacks.sel_collection) ? !this->callbacks.IsCollectionValidForRandom(this->callbacks.saved.at(this->callbacks.sel_collection), this) : true);
+
 	if (this->IsWidgetDisabled(WID_PW_TYPE_RANDOM)) {
 		this->RaiseWidgetWhenLowered(WID_PW_TYPE_RANDOM);
 		this->callbacks.place_collection = false;
 	} else {
 		this->callbacks.SetSelectedCollection(this->callbacks.saved.at(this->callbacks.sel_collection));
 	}
+	this->InvalidateData(PickerInvalidation::Collection);
 }
 
 void PickerWindow::DrawWidget(const Rect &r, WidgetID widget) const
@@ -501,7 +503,7 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 			}
 			this->GetWidget<NWidgetStacked>(WID_PW_TYPE_RAND_SEL)->SetDisplayedPlane(HasBit(this->callbacks.mode, PFM_SAVED) ? 0 : SZSP_HORIZONTAL);
 			this->callbacks.place_collection = HasBit(this->callbacks.mode, PFM_SAVED) && IsWidgetLowered(WID_PW_TYPE_RANDOM);
-			this->InvalidateData({PickerInvalidation::Class, PickerInvalidation::Type, PickerInvalidation::Position});
+			this->InvalidateData({PickerInvalidation::Class, PickerInvalidation::Type, PickerInvalidation::Collection, PickerInvalidation::Position});
 			this->ReInit();
 			SndClickBeep();
 			break;
@@ -547,8 +549,8 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 			if (this->callbacks.IsTypeAvailable(item.class_index, item.index)) {
 				this->callbacks.SetSelectedClass(item.class_index);
 				this->callbacks.SetSelectedType(item.index);
-				this->InvalidateData(PickerInvalidation::Position);
 				this->callbacks.place_collection = false;
+				this->InvalidateData({PickerInvalidation::Collection, PickerInvalidation::Position});
 				if (HasBit(this->callbacks.mode, PFM_SAVED)) this->RaiseWidgetWhenLowered(WID_PW_TYPE_RANDOM);
 			}
 			SndClickBeep();
@@ -564,6 +566,7 @@ void PickerWindow::OnClick(Point pt, WidgetID widget, int)
 			} else {
 				this->callbacks.place_collection = false;
 			}
+			this->InvalidateData(PickerInvalidation::Collection);
 			SndClickBeep();
 			this->ReInit();
 			break;

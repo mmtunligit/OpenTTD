@@ -71,6 +71,7 @@ struct RoadWaypointPickerSelection {
 	RoadStopClassID sel_class; ///< Selected road waypoint class.
 	uint16_t sel_type; ///< Selected road waypoint type within the class.
 	std::vector<std::pair<RoadStopClassID, uint16_t>> sel_collection; ///< Selected road waypoint class.
+	bool place_collection; ///< Are we placing a collection?
 };
 static RoadWaypointPickerSelection _waypoint_gui; ///< Settings of the road waypoint picker.
 
@@ -79,6 +80,7 @@ struct RoadStopPickerSelection {
 	uint16_t sel_type; ///< Selected road stop type within the class.
 	DiagDirection orientation; ///< Selected orientation of the road stop.
 	std::vector<std::pair<RoadStopClassID, uint16_t>> sel_collection; ///< Selected road waypoint class.
+	bool place_collection; ///< Are we placing a collection?
 };
 static RoadStopPickerSelection _roadstop_gui;
 
@@ -234,16 +236,29 @@ static void PlaceRoadStop(TileIndex start_tile, TileIndex end_tile, RoadStopType
 	DiagDirection ddir = _roadstop_gui.orientation;
 	bool drive_through = ddir >= DIAGDIR_END;
 	if (drive_through) ddir = static_cast<DiagDirection>(ddir - DIAGDIR_END); // Adjust picker result to actual direction.
-	RoadStopClassID spec_class = _roadstop_gui.sel_class;
-	uint16_t spec_index = _roadstop_gui.sel_type;
+	std::vector<RoadStopClassID> spec_classes;
+	std::vector<uint16_t> spec_indicies;
+	if (_roadstop_gui.place_collection) {
+		spec_classes.reserve(_roadstop_gui.sel_collection.size());
+		spec_indicies.reserve(_roadstop_gui.sel_collection.size());
+		for (const auto &item :_roadstop_gui.sel_collection) {
+			spec_classes.emplace_back(item.first);
+			spec_indicies.emplace_back(item.second);
+		}
+	} else {
+		spec_classes.reserve(1);
+		spec_classes.emplace_back(_roadstop_gui.sel_class);
+		spec_indicies.reserve(1);
+		spec_indicies.emplace_back(_roadstop_gui.sel_type);
+	}
 
 	auto proc = [=](bool test, StationID to_join) -> bool {
 		if (test) {
 			return Command<CMD_BUILD_ROAD_STOP>::Do(CommandFlagsToDCFlags(GetCommandFlags<CMD_BUILD_ROAD_STOP>()), ta.tile, ta.w, ta.h, stop_type, drive_through,
-					ddir, rt, spec_class, spec_index, StationID::Invalid(), adjacent).Succeeded();
+					ddir, rt, spec_classes, spec_indicies, StationID::Invalid(), adjacent).Succeeded();
 		} else {
 			return Command<CMD_BUILD_ROAD_STOP>::Post(err_msg, CcRoadStop, ta.tile, ta.w, ta.h, stop_type, drive_through,
-					ddir, rt, spec_class, spec_index, to_join, adjacent);
+					ddir, rt, spec_classes, spec_indicies, to_join, adjacent);
 		}
 	};
 
@@ -269,7 +284,7 @@ static void PlaceRoad_Waypoint(TileIndex tile)
 	} else {
 		/* Tile where we can't build road waypoints. This is always going to fail,
 		 * but provides the user with a proper error message. */
-		Command<CMD_BUILD_ROAD_WAYPOINT>::Post(STR_ERROR_CAN_T_BUILD_ROAD_WAYPOINT, tile, AXIS_X, 1, 1, ROADSTOP_CLASS_WAYP, 0, StationID::Invalid(), false);
+		Command<CMD_BUILD_ROAD_WAYPOINT>::Post(STR_ERROR_CAN_T_BUILD_ROAD_WAYPOINT, tile, AXIS_X, 1, 1, std::vector<RoadStopClassID> {ROADSTOP_CLASS_WAYP}, std::vector<uint16_t> {0}, StationID::Invalid(), false);
 	}
 }
 
@@ -769,12 +784,28 @@ struct BuildRoadToolbarWindow : Window {
 							TileArea ta(start_tile, end_tile);
 							Axis axis = select_method == VPM_X_LIMITED ? AXIS_X : AXIS_Y;
 							bool adjacent = _ctrl_pressed;
+							std::vector<RoadStopClassID> cls;
+							std::vector<uint16_t> index;
+
+							if (_waypoint_gui.place_collection) {
+								cls.reserve(_waypoint_gui.sel_collection.size());
+								index.reserve(_waypoint_gui.sel_collection.size());
+								for (const auto &item :_waypoint_gui.sel_collection) {
+									cls.emplace_back(item.first);
+									index.emplace_back(item.second);
+								}
+							} else {
+								cls.reserve(1);
+								cls.emplace_back(_waypoint_gui.sel_class);
+								index.reserve(1);
+								index.emplace_back(_waypoint_gui.sel_type);
+							}
 
 							auto proc = [=](bool test, StationID to_join) -> bool {
 								if (test) {
-									return Command<CMD_BUILD_ROAD_WAYPOINT>::Do(CommandFlagsToDCFlags(GetCommandFlags<CMD_BUILD_ROAD_WAYPOINT>()), ta.tile, axis, ta.w, ta.h, _waypoint_gui.sel_class, _waypoint_gui.sel_type, StationID::Invalid(), adjacent).Succeeded();
+									return Command<CMD_BUILD_ROAD_WAYPOINT>::Do(CommandFlagsToDCFlags(GetCommandFlags<CMD_BUILD_ROAD_WAYPOINT>()), ta.tile, axis, ta.w, ta.h, cls, index, StationID::Invalid(), adjacent).Succeeded();
 								} else {
-									return Command<CMD_BUILD_ROAD_WAYPOINT>::Post(STR_ERROR_CAN_T_BUILD_ROAD_WAYPOINT, CcPlaySound_CONSTRUCTION_OTHER, ta.tile, axis, ta.w, ta.h, _waypoint_gui.sel_class, _waypoint_gui.sel_type, to_join, adjacent);
+									return Command<CMD_BUILD_ROAD_WAYPOINT>::Post(STR_ERROR_CAN_T_BUILD_ROAD_WAYPOINT, CcPlaySound_CONSTRUCTION_OTHER, ta.tile, axis, ta.w, ta.h, cls, index, to_join, adjacent);
 								}
 							};
 
@@ -1393,6 +1424,9 @@ public:
 	{
 		this->PickerWindow::OnInvalidateData(data, gui_scope);
 
+		PickerInvalidations pi(data);
+		if (pi.Test(PickerInvalidation::Position)) _roadstop_gui.place_collection = this->callbacks.place_collection;
+
 		if (gui_scope) {
 			this->CheckOrientationValid();
 		}
@@ -1754,6 +1788,14 @@ struct BuildRoadWaypointWindow : public PickerWindow {
 	BuildRoadWaypointWindow(WindowDesc &desc, Window *parent) : PickerWindow(desc, parent, TRANSPORT_ROAD, RoadWaypointPickerCallbacks::instance)
 	{
 		this->ConstructWindow();
+	}
+
+	void OnInvalidateData([[maybe_unused]] int data = 0, [[maybe_unused]] bool gui_scope = true) override
+	{
+		this->PickerWindow::OnInvalidateData(data, gui_scope);
+
+		PickerInvalidations pi(data);
+		if (pi.Test(PickerInvalidation::Collection)) _waypoint_gui.place_collection = this->callbacks.place_collection;
 	}
 
 	static inline HotkeyList hotkeys{"buildroadwaypoint", {
