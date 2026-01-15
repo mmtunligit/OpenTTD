@@ -1829,7 +1829,7 @@ struct BuildHouseWindow : public PickerWindow {
 	{
 		const HouseSpec *spec = HouseSpec::Get(HousePickerCallbacks::sel_type);
 
-		if (spec->building_flags.Test(BuildingFlag::Size1x1)) {
+		if (spec->building_flags.Test(BuildingFlag::Size1x1) || this->callbacks.place_collection) {
 			VpStartPlaceSizing(tile, VPM_X_AND_Y, DDSP_PLACE_HOUSE);
 		} else {
 			Command<CMD_PLACE_HOUSE>::Post(STR_ERROR_CAN_T_BUILD_HOUSE, CcPlaySound_CONSTRUCTION_OTHER, tile, spec->Index(), BuildHouseWindow::house_protected, BuildHouseWindow::replace);
@@ -1847,9 +1847,18 @@ struct BuildHouseWindow : public PickerWindow {
 
 		assert(select_proc == DDSP_PLACE_HOUSE);
 
-		const HouseSpec *spec = HouseSpec::Get(HousePickerCallbacks::sel_type);
+		std::vector<HouseID> indicies;
+		if (this->callbacks.place_collection) {
+			indicies.reserve(HousePickerCallbacks::sel_collection.size());
+			for (const int &type : HousePickerCallbacks::sel_collection) {
+				indicies.emplace_back(HouseSpec::Get(type)->Index());
+			}
+		} else {
+			indicies.reserve(1);
+			indicies.emplace_back(HouseSpec::Get(HousePickerCallbacks::sel_type)->Index());
+		}
 		Command<CMD_PLACE_HOUSE_AREA>::Post(STR_ERROR_CAN_T_BUILD_HOUSE, CcPlaySound_CONSTRUCTION_OTHER,
-			end_tile, start_tile, spec->Index(), BuildHouseWindow::house_protected, BuildHouseWindow::replace, _ctrl_pressed);
+			end_tile, start_tile, indicies, BuildHouseWindow::house_protected, BuildHouseWindow::replace, _ctrl_pressed);
 	}
 
 	const IntervalTimer<TimerWindow> view_refresh_interval = {std::chrono::milliseconds(2500), [this](auto) {
