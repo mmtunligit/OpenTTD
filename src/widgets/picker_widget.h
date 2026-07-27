@@ -26,6 +26,7 @@ enum PickerClassWindowWidgets : WidgetID {
 
 	WID_PW_TYPE_SEL, ///< Stack to hide the type picker.
 	WID_PW_TYPE_FILTER, ///< Text filter.
+	WID_PW_MODE_SEL, ///< Stack to hide the mode selector.
 	WID_PW_MODE_ALL, ///< Toggle "Show all" filter mode.
 	WID_PW_MODE_USED, ///< Toggle showing only used types.
 	WID_PW_MODE_SAVED, ///< Toggle showing only saved types.

@@ -159,6 +159,11 @@ public:
 	 * @param id The chosen type within the class.
 	 */
 	virtual void DrawType(int x, int y, int cls_id, int id) const = 0;
+	/**
+	 * Should we be showing the mode select row?
+	 * @return true if we should.
+	 */
+	virtual bool ShowModes() const { return true; }
 
 	/* Collection Callbacks */
 	/**

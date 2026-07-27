@@ -255,6 +255,9 @@ void PickerWindow::ConstructWindow()
 		this->callbacks.FillUsedItems(this->callbacks.used);
 
 		SetWidgetDisabledState(WID_PW_MODE_ALL, !this->callbacks.HasClassChoice());
+		if (auto *nwid = this->GetWidget<NWidgetStacked>(WID_PW_MODE_SEL); nwid != nullptr) {
+			nwid->SetDisplayedPlane(this->callbacks.ShowModes() ? 0 : SZSP_HORIZONTAL);
+		}
 
 		this->GetWidget<NWidgetCore>(WID_PW_TYPE_ITEM)->SetToolTip(this->callbacks.GetTypeTooltip());
 
@@ -978,12 +981,14 @@ std::unique_ptr<NWidgetBase> MakePickerTypeWidgets()
 				EndContainer(),
 				NWidget(NWID_VERTICAL, NWidContainerFlag{}, WID_PW_BADGE_FILTER),
 			EndContainer(),
-				NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
-					NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_PW_MODE_ALL), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_PICKER_MODE_ALL, STR_PICKER_MODE_ALL_TOOLTIP),
-					NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_PW_MODE_USED), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_PICKER_MODE_USED, STR_PICKER_MODE_USED_TOOLTIP),
-					NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_PW_MODE_SAVED), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_PICKER_MODE_SAVED, STR_PICKER_MODE_SAVED_TOOLTIP),
-					NWidget(WWT_PUSHTXTBTN, Colours::DarkGreen, WID_PW_SHRINK), SetAspect(WidgetDimensions::ASPECT_UP_DOWN_BUTTON), SetStringTip(STR_PICKER_PREVIEW_SHRINK, STR_PICKER_PREVIEW_SHRINK_TOOLTIP),
-					NWidget(WWT_PUSHTXTBTN, Colours::DarkGreen, WID_PW_EXPAND), SetAspect(WidgetDimensions::ASPECT_UP_DOWN_BUTTON), SetStringTip(STR_PICKER_PREVIEW_EXPAND, STR_PICKER_PREVIEW_EXPAND_TOOLTIP),
+				NWidget(NWID_SELECTION, Colours::Invalid, WID_PW_MODE_SEL),
+					NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
+						NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_PW_MODE_ALL), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_PICKER_MODE_ALL, STR_PICKER_MODE_ALL_TOOLTIP),
+						NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_PW_MODE_USED), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_PICKER_MODE_USED, STR_PICKER_MODE_USED_TOOLTIP),
+						NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_PW_MODE_SAVED), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_PICKER_MODE_SAVED, STR_PICKER_MODE_SAVED_TOOLTIP),
+						NWidget(WWT_PUSHTXTBTN, Colours::DarkGreen, WID_PW_SHRINK), SetAspect(WidgetDimensions::ASPECT_UP_DOWN_BUTTON), SetStringTip(STR_PICKER_PREVIEW_SHRINK, STR_PICKER_PREVIEW_SHRINK_TOOLTIP),
+						NWidget(WWT_PUSHTXTBTN, Colours::DarkGreen, WID_PW_EXPAND), SetAspect(WidgetDimensions::ASPECT_UP_DOWN_BUTTON), SetStringTip(STR_PICKER_PREVIEW_EXPAND, STR_PICKER_PREVIEW_EXPAND_TOOLTIP),
+					EndContainer(),
 				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
 					NWidget(WWT_PANEL, Colours::DarkGreen), SetScrollbar(WID_PW_TYPE_SCROLL),
