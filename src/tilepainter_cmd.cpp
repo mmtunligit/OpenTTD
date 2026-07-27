@@ -25,12 +25,11 @@
  * @param tile The tile to paint.
  * @return \c true iff the tile can be painted by the current company.
  */
-bool TileCanBePainted(TileIndex tile)
+static bool TileCanBePainted(TileIndex tile)
 {
 	switch (GetTileType(tile)) {
 		/* I see a void tile and I want it painted black... */
 		case TileType::Void:
-		default:
 			return false;
 
 		/* Some tiles can always be painted, even if it won't actually be visible. */
@@ -53,6 +52,9 @@ bool TileCanBePainted(TileIndex tile)
 			Owner owner = GetTileOwner(tile);
 			if (owner != _current_company && Company::IsHumanID(owner)) return false;
 		}
+
+		default:
+			return false;
 	}
 }
 
@@ -61,35 +63,35 @@ bool TileCanBePainted(TileIndex tile)
  * @param tile The tile to paint.
  * @param paint The paint to add.
  */
-CommandCost CmdAddPrimaryPaint(TileIndex tile, TilePaint paint)
+/*CommandCost CmdAddPrimaryPaint(TileIndex tile, TilePaint paint)
 {
 	if (!TileCanBePainted(tile)) return CMD_ERROR; // TODO: Throw more descriptive error.
 
 	SetPrimaryTilePaint(tile, paint);
 
 	return CommandCost();
-}
+}*/
 
 /**
  * Remove a TilePaint from a tile's primary paint slot.
  * @param tile The tile to remove the paint from.
  */
-CommandCost CmdRemovePrimaryPaint(TileIndex tile)
+/*CommandCost CmdRemovePrimaryPaint(TileIndex tile)
 {
 	/* If it can't be painted, it can't be un-painted. */
-	if (!TileCanBePainted(tile)) return CMD_ERROR; // TODO: Throw more descriptive error.
+	/*if (!TileCanBePainted(tile)) return CMD_ERROR; // TODO: Throw more descriptive error.
 
 	SetPrimaryTilePaint(tile, TilePaint::None);
 
 	return CommandCost();
-}
+}*/
 
 /**
  * Remove any paint from a tile, whether it supports it or not.
  * @param tile The tile to clear.
  */
-void ClearPaintedTile(TileIndex tile)
+static void ClearPaintedTile(TileIndex tile)
 {
-	CmdRemovePrimaryPaint(tile);
+	//CmdRemovePrimaryPaint(tile);
 	// TODO: Remove secondary paint.
 }

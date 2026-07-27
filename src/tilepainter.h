@@ -13,7 +13,9 @@
 #include "tilepainter_map.h"
 #include "map_func.h"
 #include "gfx_type.h"
+
 #include "table/sprites.h"
+#include "table/strings.h"
 
 #include "stdafx.h"
 
@@ -32,13 +34,16 @@ enum class TilePaintDiagonalOrientation : uint8_t {
  * @note Limited to None + 15 paints due to savegame storage.
  */
 enum class TilePaint : uint8_t {
-	None, ///< No paint, exposes the actual ground tile.
 	Dirt, ///< Brown dirt (matching bare land).
 	GrassyDirt, ///< Brown dirt with some green (matching partly regrown grass after bulldozing).
 	Stone, ///< Light stone pavers (matching houses, pavements, etc.).
+	None, ///< No paint, exposes the actual ground tile.
+	End, ///< End Marker.
 
 	/* Space to add tile paints matching popular NewGRFs at a later date. */
 };
+
+StringID GetTilePaintName(TilePaint paint);
 
 /**
  * Get the SpriteID of the flat tile matching a given TilePaint.
@@ -46,7 +51,7 @@ enum class TilePaint : uint8_t {
  * @param paint The paint to query.
  * @return The SpriteID of the flat tile matching the given TilePaint.
  */
-SpriteID GetPaintedTileBase(TilePaint paint)
+inline SpriteID GetPaintedTileBase(TilePaint paint)
 {
 	switch (paint) {
 		case TilePaint::Dirt: return SPR_FLAT_BARE_LAND;
@@ -54,6 +59,7 @@ SpriteID GetPaintedTileBase(TilePaint paint)
 		case TilePaint::Stone: return SPR_CONCRETE_GROUND; // TODO: This sprite lacks slopes, needs redrawing and re-defining.
 
 		case TilePaint::None:
+		case TilePaint::End:
 		default:
 			NOT_REACHED();
 	}
@@ -64,7 +70,7 @@ SpriteID GetPaintedTileBase(TilePaint paint)
  * @param t The tile to query.
  * @return \c true iff the tile has a primary paint.
  */
-bool TileHasPrimaryPaint(Tile t)
+inline bool TileHasPrimaryPaint(Tile t)
 {
 	return GetPrimaryTilePaint(t) != TilePaint{};
 }
@@ -74,7 +80,7 @@ bool TileHasPrimaryPaint(Tile t)
  * @param t The tile to query.
  * @return \c true iff the tile has a secondary paint, false if not selected or if the tile cannot support a secondary paint.
  */
-bool TileHasSecondaryPaint(Tile t)
+inline bool TileHasSecondaryPaint(Tile t)
 {
 	return CanHaveSecondaryTilePaint(t) && GetSecondaryTilePaint(t) != TilePaint{};
 }
@@ -84,9 +90,11 @@ bool TileHasSecondaryPaint(Tile t)
  * @param t The tile to query.
  * @return \c true iff the tile has been painted.
  */
-bool TileIsPainted(Tile t)
+inline bool TileIsPainted(Tile t)
 {
 	return TileHasPrimaryPaint(t) || TileHasSecondaryPaint(t);
 }
+
+Window *ShowBuildPaintPicker();
 
 #endif /* TILEPAINTER_H */

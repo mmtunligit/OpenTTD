@@ -10,7 +10,6 @@
 #ifndef TILEPAINTER_CMD_H
 #define TILEPAINTER_CMD_H
 
-#include "tile_type.h"
 #include "command_type.h"
 #include "tilepainter.h"
 
@@ -18,7 +17,8 @@ bool TileCanBePainted(TileIndex tile);
 void ClearPaintedTile(TileIndex tile);
 
 CommandCost CmdAddPrimaryPaint(TileIndex tile, TilePaint paint);
-CommandCost CmdRemovePrimaryPaint(TileIndex tile);
+//CommandCost CmdRemovePrimaryPaint(TileIndex tile); NOTE do you need this? i feel like the other one could just be paint tile and if right click is held it clears the paint
 
+//DEF_CMD_TRAIT(Commands::AddPrimaryPaint, CmdAddPrimaryPaint, CommandFlag::NoWater, CommandType::LandscapeConstruction)
 
 #endif /* TILEPAINTER_CMD_H */

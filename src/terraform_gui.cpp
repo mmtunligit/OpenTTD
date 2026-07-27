@@ -26,6 +26,7 @@
 #include "tree_map.h"
 #include "landscape_type.h"
 #include "tilehighlight_func.h"
+#include "tilepainter.h"
 #include "strings_func.h"
 #include "newgrf_object.h"
 #include "object.h"
@@ -232,6 +233,10 @@ struct TerraformToolbarWindow : Window {
 				ShowBuildObjectPicker();
 				break;
 
+			case WID_TT_PAINT_TILE: // Paint tile button
+				ShowBuildPaintPicker();
+				break;
+
 			default: NOT_REACHED();
 		}
 	}
@@ -363,6 +368,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_terraform_widgets = 
 			NWidget(WWT_PUSHIMGBTN, Colours::DarkGreen, WID_TT_PLACE_OBJECT), SetToolbarMinimalSize(1),
 								SetFill(0, 1), SetSpriteTip(SPR_IMG_TRANSMITTER, STR_SCENEDIT_TOOLBAR_PLACE_OBJECT_TOOLTIP),
 		EndContainer(),
+		NWidget(WWT_PUSHIMGBTN, Colours::DarkGreen, WID_TT_PAINT_TILE), SetToolbarMinimalSize(1),
+								SetFill(0, 1), SetSpriteTip(SPR_IMG_DESERT, STR_TERRAFORM_TOOLTIP_DEFINE_DESERT_AREA/*TODO real string*/),
 	EndContainer(),
 };
 

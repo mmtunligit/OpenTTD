@@ -393,6 +393,12 @@ enum class WindowClass : uint16_t {
 	BuildObject,
 
 	/**
+	 * Build tile paint; %Window numbers:
+	 *   - 0 = #BuildPaintWidgets
+	 */
+	BuildPaint,
+
+	/**
 	 * Build house; %Window numbers:
 	 *   - 0 = #BuildHouseWidgets
 	 */

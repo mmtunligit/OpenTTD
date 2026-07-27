@@ -25,7 +25,7 @@ enum class TilePaintDiagonalOrientation : uint8_t;
  * @param t The tile to query.
  * @return The primary paint used on the tile.
  */
-TilePaint GetPrimaryTilePaint(Tile t)
+inline TilePaint GetPrimaryTilePaint(Tile t)
 {
 	return TilePaint(GB(t.m8(), 12, 4));
 }
@@ -35,9 +35,9 @@ TilePaint GetPrimaryTilePaint(Tile t)
  * @param t The tile to paint.
  * @param paint The paint to use.
  */
-void SetPrimaryTilePaint(Tile t, TilePaint paint)
+inline void SetPrimaryTilePaint(Tile t, TilePaint paint)
 {
-	SB(t.m8(), 12, 4, paint);
+	SB(t.m8(), 12, 4, static_cast<uint8_t>(paint));
 }
 
 /**
@@ -45,7 +45,7 @@ void SetPrimaryTilePaint(Tile t, TilePaint paint)
  * @param t The tile to query.
  * @return \c True iff this tile can have a secondary tile paint.
  */
-bool CanHaveSecondaryTilePaint(Tile t)
+inline bool CanHaveSecondaryTilePaint(Tile t)
 {
 	return IsTileType(t, TileType::Clear) || IsTileType(t, TileType::Railway);
 }
@@ -55,7 +55,7 @@ bool CanHaveSecondaryTilePaint(Tile t)
  * @param t The tile to query.
  * @return The secondary paint used on the tile.
  */
-TilePaint GetSecondaryTilePaint(Tile t)
+inline TilePaint GetSecondaryTilePaint(Tile t)
 {
 	assert(CanHaveSecondaryTilePaint(t));
 	return TilePaint(GB(t.m8(), 8, 4));
@@ -66,10 +66,10 @@ TilePaint GetSecondaryTilePaint(Tile t)
  * @param t The tile to paint.
  * @param paint The paint to use.
  */
-void SetSecondaryTilePaint(Tile t, TilePaint paint)
+inline void SetSecondaryTilePaint(Tile t, TilePaint paint)
 {
 	assert(CanHaveSecondaryTilePaint(t));
-	SB(t.m8(), 8, 4, paint);
+	SB(t.m8(), 8, 4, static_cast<uint8_t>(paint));
 }
 
 /* Get the diagonal orientation of diagonal paint on a tile.
@@ -77,7 +77,7 @@ void SetSecondaryTilePaint(Tile t, TilePaint paint)
  * @param t The tile to query.
  * @return The orientation of the diagonal paint on the tile.
  */
-TilePaintDiagonalOrientation GetDiagonalPaintOrientation(Tile t)
+inline TilePaintDiagonalOrientation GetDiagonalPaintOrientation(Tile t)
 {
 	assert(IsTileType(t, TileType::Clear));
 	return TilePaintDiagonalOrientation(GB(t.m8(), 5, 3));
@@ -88,10 +88,10 @@ TilePaintDiagonalOrientation GetDiagonalPaintOrientation(Tile t)
  * @param t The tile to query.
  * @return The orientation of the diagonal paint on the tile.
  */
-void SetDiagonalPaintOrientation(Tile t, TilePaintDiagonalOrientation orientation)
+inline void SetDiagonalPaintOrientation(Tile t, TilePaintDiagonalOrientation orientation)
 {
 	assert(IsTileType(t, TileType::Clear));
-	SB(t.m8(), 5, 3, orientation);
+	SB(t.m8(), 5, 3, static_cast<uint8_t>(orientation));
 }
 
 #endif /* TILEPAINTER_MAP_H */

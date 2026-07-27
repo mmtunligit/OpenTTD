@@ -241,6 +241,8 @@ enum class Commands : uint8_t {
 
 	PlantTree, ///< plant a tree
 
+	//AddPrimaryPaint, ///< paint a tile TODO
+
 	BuildVehicle, ///< build a vehicle
 	SellVehicle, ///< sell a vehicle
 	RefitVehicle, ///< refit the cargo space of a vehicle
