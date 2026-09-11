@@ -95,6 +95,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_group_widgets = {
 			EndContainer(),
 			NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(1, 0), SetFill(1, 1), SetResize(1, 0), EndContainer(),
 			NWidget(NWID_HORIZONTAL),
+				NWidget(WWT_DROPDOWN, Colours::Grey, WID_GL_CHANGE_VIEW_DROPDOWN), SetMinimalSize(80, 12),
+						SetStringTip(STR_VEHICLE_LIST_CHANGE_VIEW, STR_VEHICLE_LIST_CHANGE_VIEW_TOOLTIP),
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_GL_AVAILABLE_VEHICLES), SetMinimalSize(106, 12),
 						SetToolTip(STR_VEHICLE_LIST_AVAILABLE_ENGINES_TOOLTIP),
 				NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(0, 12), SetFill(1, 0), SetResize(1, 0), EndContainer(),
@@ -890,6 +892,11 @@ public:
 				ShowCompanyLiveryWindow(this->owner, this->vli.ToGroupID());
 				break;
 
+			case WID_GL_CHANGE_VIEW_DROPDOWN: {
+				ShowDropDownList(this, BuildManagementDropdownList(), static_cast<int>(ManagementWindow::MW_GROUPS), widget);
+				break;
+			}
+
 			case WID_GL_AVAILABLE_VEHICLES:
 				ShowBuildVehicleWindow(INVALID_TILE, this->vli.vtype);
 				break;
@@ -1047,6 +1054,11 @@ public:
 
 			case WID_GL_FILTER_BY_CARGO: // Select a cargo filter criteria
 				this->SetCargoFilter(static_cast<CargoType>(index));
+				break;
+
+			case WID_GL_CHANGE_VIEW_DROPDOWN:
+				this->Close();
+				this->OpenMangementWindow(index);
 				break;
 
 			case WID_GL_MANAGE_VEHICLES_DROPDOWN:

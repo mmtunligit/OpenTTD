@@ -551,6 +551,37 @@ DropDownList BaseVehicleListWindow::BuildActionDropdownList(bool show_autoreplac
 	return list;
 }
 
+/**
+ * Display the management window dropdown.
+ * @return the DropDownList.
+ */
+DropDownList BaseVehicleListWindow::BuildManagementDropdownList()
+{
+	DropDownList list;
+
+	list.push_back(MakeDropDownListStringItem(STR_VEHICLE_LIST, MW_VEHICLES));
+	list.push_back(MakeDropDownListStringItem(STR_GROUP_MANAGEMENT, MW_GROUPS));
+
+	return list;
+};
+
+/**
+ * Open the selected management window from the dropdown.
+ * @param index the selected entry from the dropdown.
+ */
+void BaseVehicleListWindow::OpenMangementWindow(int index)
+{
+	switch (index) {
+		case MW_VEHICLES:
+			ShowVehicleListWindowForce(this->vli.company, this->vli.vtype);
+			break;
+
+		case MW_GROUPS:
+			ShowCompanyGroup(this->vli.company, this->vli.vtype);
+			break;
+	}
+};
+
 /** Cached values for VehicleNameSorter to spare many GetString() calls. */
 static const Vehicle *_last_vehicle[2] = { nullptr, nullptr };
 
@@ -1655,6 +1686,10 @@ static constexpr std::initializer_list<NWidgetPart> _nested_vehicle_list = {
 	EndContainer(),
 
 	NWidget(NWID_HORIZONTAL),
+		NWidget(NWID_SELECTION, Colours::Invalid, WID_VL_CHANGE_VIEW_SEL),
+			NWidget(WWT_DROPDOWN, Colours::Grey, WID_VL_CHANGE_VIEW_DROPDOWN), SetMinimalSize(80, 12), SetFill(1, 1),
+				SetStringTip(STR_VEHICLE_LIST_CHANGE_VIEW, STR_VEHICLE_LIST_CHANGE_VIEW_TOOLTIP),
+		EndContainer(),
 		NWidget(NWID_SELECTION, Colours::Invalid, WID_VL_HIDE_BUTTONS),
 			NWidget(NWID_HORIZONTAL),
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_VL_AVAILABLE_VEHICLES), SetMinimalSize(106, 12), SetFill(0, 1),
@@ -1958,6 +1993,7 @@ public:
 			this->GetWidget<NWidgetCore>(WID_VL_CAPTION)->SetString(STR_VEHICLE_LIST_TRAIN_CAPTION + to_underlying(this->vli.vtype));
 			nwi->SetDisplayedPlane(BP_NORMAL);
 		}
+		this->GetWidget<NWidgetStacked>(WID_VL_CHANGE_VIEW_SEL)->SetDisplayedPlane(this->vli.type == VehicleListType::Company ? 0 : SZSP_NONE);
 
 		this->FinishInitNested(window_number);
 		if (this->vli.company != OWNER_NONE) this->owner = this->vli.company;
@@ -2185,6 +2221,10 @@ public:
 				break;
 			}
 
+			case WID_VL_CHANGE_VIEW_DROPDOWN:
+				ShowDropDownList(this, BuildManagementDropdownList(), static_cast<int>(ManagementWindow::MW_VEHICLES), widget);
+				break;
+
 			case WID_VL_AVAILABLE_VEHICLES:
 				ShowBuildVehicleWindow(INVALID_TILE, this->vli.vtype);
 				break;
@@ -2214,6 +2254,11 @@ public:
 
 			case WID_VL_FILTER_BY_CARGO:
 				this->SetCargoFilter(static_cast<CargoType>(index));
+				break;
+
+			case WID_VL_CHANGE_VIEW_DROPDOWN:
+				this->Close();
+				this->OpenMangementWindow(index);
 				break;
 
 			case WID_VL_MANAGE_VEHICLES_DROPDOWN:
@@ -2346,6 +2391,10 @@ void ShowVehicleListWindow(CompanyID company, VehicleType vehicle_type, TileInde
 	ShowVehicleListWindowLocal(company, VehicleListType::Depot, vehicle_type, GetDepotDestinationIndex(depot_tile).base());
 }
 
+void ShowVehicleListWindowForce(CompanyID company, VehicleType vehicle_type)
+{
+	ShowVehicleListWindowLocal(company, VehicleListType::Company, vehicle_type, company.base());
+}
 
 /* Unified vehicle GUI - Vehicle Details Window */
 

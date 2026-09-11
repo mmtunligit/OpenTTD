@@ -73,6 +73,11 @@ struct BaseVehicleListWindow : public Window {
 		GB_END,
 	};
 
+	enum ManagementWindow : uint8_t {
+		MW_VEHICLES, ///< Window is a vehicle list.
+		MW_GROUPS, ///< Window is the groups window.
+	};
+
 	GroupBy grouping{}; ///< How we want to group the list.
 	VehicleList vehicles{}; ///< List of vehicles.  This is the buffer for `vehgroups` to point into; if this is structurally modified, `vehgroups` must be rebuilt.
 	GUIVehicleGroupList vehgroups{}; ///< List of (groups of) vehicles.  This stores iterators of `vehicles`, and should be rebuilt if `vehicles` is structurally changed.
@@ -84,6 +89,7 @@ struct BaseVehicleListWindow : public Window {
 	CargoType cargo_filter_criteria{}; ///< Selected cargo filter index
 	uint order_arrow_width = 0; ///< Width of the arrow in the small order list.
 	CargoTypes used_cargoes{};
+	bool switching = false; ///< Are we switching to a different ManagementWindow?
 
 	typedef GUIVehicleGroupList::SortFunction VehicleGroupSortFunction;
 	typedef GUIVehicleList::SortFunction VehicleIndividualSortFunction;
@@ -123,6 +129,8 @@ struct BaseVehicleListWindow : public Window {
 	DropDownList BuildCargoDropDownList(bool full) const;
 	Dimension GetActionDropdownSize(bool show_autoreplace, bool show_group, bool show_create);
 	DropDownList BuildActionDropdownList(bool show_autoreplace, bool show_group, bool show_create);
+	static DropDownList BuildManagementDropdownList();
+	void OpenMangementWindow(int index);
 
 	std::span<const StringID> GetVehicleSorterNames() const;
 

@@ -65,6 +65,7 @@ void ShowVehicleListWindow(const Vehicle *v);
 void ShowVehicleListWindow(CompanyID company, VehicleType vehicle_type);
 void ShowVehicleListWindow(CompanyID company, VehicleType vehicle_type, StationID station);
 void ShowVehicleListWindow(CompanyID company, VehicleType vehicle_type, TileIndex depot_tile);
+void ShowVehicleListWindowForce(CompanyID company, VehicleType vehicle_type);
 
 /**
  * Get the height of a single vehicle in the GUIs.

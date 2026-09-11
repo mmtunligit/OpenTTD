@@ -4141,6 +4141,8 @@ STR_CONFIG_GAME_PRODUCTION                                      :{WHITE}Change p
 STR_CONFIG_GAME_PRODUCTION_LEVEL                                :{WHITE}Change production level (percentage, up to 800%)
 
 # Vehicle lists
+STR_VEHICLE_LIST                                                :Vehicle list
+
 ###length VEHICLE_TYPES
 STR_VEHICLE_LIST_TRAIN_CAPTION                                  :{WHITE}{STRING2} - {COMMA} Train{P "" s}
 STR_VEHICLE_LIST_ROAD_VEHICLE_CAPTION                           :{WHITE}{STRING2} - {COMMA} Road Vehicle{P "" s}
@@ -4158,6 +4160,9 @@ STR_VEHICLE_LIST_AVAILABLE_TRAINS                               :Available Train
 STR_VEHICLE_LIST_AVAILABLE_ROAD_VEHICLES                        :Available Vehicles
 STR_VEHICLE_LIST_AVAILABLE_SHIPS                                :Available Ships
 STR_VEHICLE_LIST_AVAILABLE_AIRCRAFT                             :Available Aircraft
+
+STR_VEHICLE_LIST_CHANGE_VIEW                                    :{BLACK}Change view
+STR_VEHICLE_LIST_CHANGE_VIEW_TOOLTIP                            :{BLACK}Change the currently open type of vehicle management window. Ctrl+Click to open a seperate window.
 
 STR_VEHICLE_LIST_MANAGE_LIST                                    :{BLACK}Manage list
 STR_VEHICLE_LIST_MANAGE_LIST_TOOLTIP                            :{BLACK}Send instructions to all vehicles in this list
@@ -4181,6 +4186,8 @@ STR_VEHICLE_LIST_AVAILABLE_ENGINES_TOOLTIP                      :{BLACK}See a li
 STR_VEHICLE_LIST_SHARED_ORDERS_LIST_CAPTION                     :{WHITE}Shared orders of {COMMA} Vehicle{P "" s}
 
 # Group window
+STR_GROUP_MANAGEMENT                                            :Group management
+
 ###length VEHICLE_TYPES
 STR_GROUP_ALL_TRAINS                                            :All trains
 STR_GROUP_ALL_ROAD_VEHICLES                                     :All road vehicles

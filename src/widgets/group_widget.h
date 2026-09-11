@@ -20,6 +20,7 @@ enum GroupListWidgets : WidgetID {
 	WID_GL_FILTER_BY_CARGO,          ///< Filter vehicles by cargo type.
 	WID_GL_LIST_VEHICLE,             ///< List of the vehicles.
 	WID_GL_LIST_VEHICLE_SCROLLBAR,   ///< Scrollbar for the list.
+	WID_GL_CHANGE_VIEW_DROPDOWN,     ///< Change management window dropdown list.
 	WID_GL_AVAILABLE_VEHICLES,       ///< Available vehicles.
 	WID_GL_MANAGE_VEHICLES_DROPDOWN, ///< Manage vehicles dropdown list.
 	WID_GL_STOP_ALL,                 ///< Stop all button.
