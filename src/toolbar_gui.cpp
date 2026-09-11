@@ -31,6 +31,7 @@
 #include "company_func.h"
 #include "company_gui.h"
 #include "vehicle_base.h"
+#include "group_gui.h"
 #include "cheat_func.h"
 #include "transparency_gui.h"
 #include "screenshot.h"
@@ -162,6 +163,7 @@ static void PopupMainToolbarMenu(Window *w, WidgetID widget, const std::initiali
 static const int CTMN_CLIENT_LIST = MAX_COMPANIES; ///< Indicates the "all connected players" entry.
 static const int CTMN_SPECTATE = COMPANY_SPECTATOR.base(); ///< Indicates the "become spectator" entry.
 static const int CTMN_SPECTATOR = CompanyID::Invalid().base(); ///< Indicates that a window is being opened for the spectator.
+static const int CTMN_GROUPS = CompanyID::Invalid().base() + BaseVehicleListWindow::ManagementWindow::MW_GROUPS; ///< Indicates the "Group management" entry.
 
 /**
  * Pop up a generic company list menu.
@@ -191,6 +193,16 @@ static void PopupMainCompanyToolbMenu(Window *w, WidgetID widget, CompanyMask gr
 		case WID_TN_GOAL:
 			list.push_back(MakeDropDownListStringItem(STR_GOALS_SPECTATOR, CTMN_SPECTATOR));
 			break;
+
+		case WID_TN_TRAINS:
+		case WID_TN_ROADVEHS:
+		case WID_TN_SHIPS:
+		case WID_TN_AIRCRAFT:
+			if (_local_company < MAX_COMPANIES && _settings_client.gui.advanced_vehicle_list != 0) {
+				list.push_back(MakeDropDownListStringItem(STR_GROUP_MANAGEMENT, CTMN_GROUPS));
+				list.push_back(MakeDropDownListDividerItem());
+			}
+			break;
 	}
 
 	for (CompanyID c = CompanyID::Begin(); c < MAX_COMPANIES; ++c) {
@@ -198,7 +210,8 @@ static void PopupMainCompanyToolbMenu(Window *w, WidgetID widget, CompanyMask gr
 		list.push_back(std::make_unique<DropDownListCompanyItem>(c, grey.Test(c)));
 	}
 
-	PopupMainToolbarMenu(w, widget, std::move(list), _local_company == COMPANY_SPECTATOR ? (widget == WID_TN_COMPANIES ? CTMN_CLIENT_LIST : CTMN_SPECTATOR) : _local_company.base());
+	PopupMainToolbarMenu(w, widget, std::move(list), _local_company == COMPANY_SPECTATOR ? (widget == WID_TN_COMPANIES ? CTMN_CLIENT_LIST : CTMN_SPECTATOR) :
+			((WID_TN_VEHICLE_START <= widget && widget <= WID_TN_AIRCRAFT) ? ((_settings_client.gui.advanced_vehicle_list == 0) ? _local_company.base() : CTMN_GROUPS) : _local_company.base()));
 }
 
 static ToolbarMode _toolbar_mode;
@@ -774,8 +787,12 @@ static CallBackFunction MenuClickIndustry(int index)
 	return CallBackFunction::None;
 }
 
-/* --- Trains button menu + 1 helper function for all vehicles. --- */
-
+/**
+ * Helper function for handling a click on a vehicles menu.
+ *
+ * @param w the toolbar window.
+ * @param veh the type of vehicle to open the menu for.
+ */
 static void ToolbarVehicleClick(Window *w, VehicleType veh)
 {
 	CompanyMask dis{};
@@ -786,6 +803,31 @@ static void ToolbarVehicleClick(Window *w, VehicleType veh)
 	PopupMainCompanyToolbMenu(w, WID_TN_VEHICLE_START + veh, dis);
 }
 
+/**
+ * Helper function for handling a click on an entry in a vehicles menu.
+ *
+ * @param index CompanyID or ManagementWindow to show the vehicle list for.
+ * @param vtype type of vehicle to show the list for.
+ */
+static void MenuClickShowVehicles(int index, VehicleType vtype)
+{
+	if (index == _local_company.base()) {
+		ShowVehicleListWindowForce(_local_company, vtype);
+		return;
+	}
+
+	switch (index) {
+		case CTMN_GROUPS:
+			ShowCompanyGroup(_local_company, vtype);
+			break;
+
+		default:
+			ShowVehicleListWindow(static_cast<CompanyID>(index), vtype);
+			break;
+	}
+}
+
+/* --- Trains button menu --- */
 
 static CallBackFunction ToolbarTrainClick(Window *w)
 {
@@ -796,12 +838,12 @@ static CallBackFunction ToolbarTrainClick(Window *w)
 /**
  * Handle click on the entry in the Train menu.
  *
- * @param index CompanyID to show train list for.
+ * @param index CompanyID or ManagementWindow to show train list for.
  * @return #CallBackFunction::None
  */
 static CallBackFunction MenuClickShowTrains(int index)
 {
-	ShowVehicleListWindow((CompanyID)index, VehicleType::Train);
+	MenuClickShowVehicles(index, VehicleType::Train);
 	return CallBackFunction::None;
 }
 
@@ -816,12 +858,12 @@ static CallBackFunction ToolbarRoadClick(Window *w)
 /**
  * Handle click on the entry in the Road Vehicles menu.
  *
- * @param index CompanyID to show road vehicles list for.
+ * @param index CompanyID or ManagementWindow to show road vehicles list for.
  * @return #CallBackFunction::None
  */
 static CallBackFunction MenuClickShowRoad(int index)
 {
-	ShowVehicleListWindow((CompanyID)index, VehicleType::Road);
+	MenuClickShowVehicles(index, VehicleType::Road);
 	return CallBackFunction::None;
 }
 
@@ -836,12 +878,12 @@ static CallBackFunction ToolbarShipClick(Window *w)
 /**
  * Handle click on the entry in the Ships menu.
  *
- * @param index CompanyID to show ship list for.
+ * @param index CompanyID or ManagementWindow to show ship list for.
  * @return #CallBackFunction::None
  */
 static CallBackFunction MenuClickShowShips(int index)
 {
-	ShowVehicleListWindow((CompanyID)index, VehicleType::Ship);
+	MenuClickShowVehicles(index, VehicleType::Ship);
 	return CallBackFunction::None;
 }
 
@@ -856,12 +898,12 @@ static CallBackFunction ToolbarAirClick(Window *w)
 /**
  * Handle click on the entry in the Aircraft menu.
  *
- * @param index CompanyID to show aircraft list for.
+ * @param index CompanyID or ManagementWindow to show aircraft list for.
  * @return #CallBackFunction::None
  */
 static CallBackFunction MenuClickShowAir(int index)
 {
-	ShowVehicleListWindow((CompanyID)index, VehicleType::Aircraft);
+	MenuClickShowVehicles(index, VehicleType::Aircraft);
 	return CallBackFunction::None;
 }
 
